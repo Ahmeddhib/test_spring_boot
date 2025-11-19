@@ -17,7 +17,7 @@ pipeline {
         stage('Checkout du Code') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/Ahmeddhib/test.spring_boot.git',
+                url: 'https://github.com/Ahmeddhib/test_spring_boot.git',
                 credentialsId: 'ahmeddhib'
             }
         }
