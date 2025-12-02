@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package com.test_spring_boot.test_spring_boot.services;
 
 import com.test_spring_boot.test_spring_boot.entities.Project;
@@ -16,3 +17,23 @@ public interface ProjectService {
     void deleteProjectById(Long id);
 
 }
+=======
+package com.test_spring_boot.test_spring_boot.services;
+
+import com.test_spring_boot.test_spring_boot.entities.Project;
+
+import java.util.List;
+
+public interface ProjectService {
+
+   Project saveProject(Project project);
+    Project findProjectById(Long id);
+
+    List<Project> findAllProjects();
+
+    Project updateProject( Project project);
+
+    void deleteProjectById(Long id);
+
+}
+>>>>>>> 586d52d7054a6bcc5d89fbc67f1e533f79699f65

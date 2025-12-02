@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package com.test_spring_boot.test_spring_boot.security;
 
 import com.auth0.jwt.algorithms.Algorithm;
@@ -60,3 +61,67 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
     }
 }
 
+=======
+package com.test_spring_boot.test_spring_boot.security;
+
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.core.GrantedAuthorityDefaults;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+public class JWTAuthorizationFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
+            throws ServletException, IOException {
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-control-Allow-Methods", "GET, POST, DELETE, PUT, PATCH");
+        response.setHeader("Access-Control-Allow-Headers",
+                "Origin, Accept, X-Requested-With, Content-Type, " +
+                        "Access-Control-Request-Method, " +
+                        "Access-Controll-Request-Headers, " +
+                        "Authorization");
+        response.setHeader("Access-Controll-Expose-Headers", "Access-Controll-Allow-Origin" + "Access-Control-Allow-Credentials, Authorization");
+        String jwt = request.getHeader("Authorization");
+        if (jwt == null || !jwt.startsWith("Bearer")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+
+        JWTVerifier verifier = JWT.require(Algorithm.HMAC256(SecParams.SECRET)).build();
+        jwt = jwt.substring(SecParams.PREFIX.length());
+        DecodedJWT decodedJWT = verifier.verify(jwt);
+        String username = decodedJWT.getSubject();
+        List<String> roles =
+                decodedJWT.getClaims().get("roles").asList(String.class);
+        Collection<GrantedAuthority> authorities = new ArrayList<>();
+        for (String r : roles )
+            authorities.add(new SimpleGrantedAuthority(r));
+        UsernamePasswordAuthenticationToken user = new UsernamePasswordAuthenticationToken(username, null, authorities);
+        SecurityContextHolder.getContext().setAuthentication(user);
+        filterChain.doFilter(request, response);
+
+
+
+
+    }
+}
+
+>>>>>>> 586d52d7054a6bcc5d89fbc67f1e533f79699f65

@@ -79,6 +79,7 @@
 		</dependency>
 
 		<dependency>
+<<<<<<< HEAD
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
@@ -87,6 +88,10 @@
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<version>42.7.2</version>
+=======
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+>>>>>>> 586d52d7054a6bcc5d89fbc67f1e533f79699f65
 		</dependency>
 	</dependencies>
 
