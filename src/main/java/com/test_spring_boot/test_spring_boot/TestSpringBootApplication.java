@@ -3,6 +3,8 @@ package com.test_spring_boot.test_spring_boot;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @SpringBootApplication
@@ -15,5 +17,10 @@ public class TestSpringBootApplication {
 	@Bean
 	public BCryptPasswordEncoder bCryptPasswordEncoder() {
 		return new BCryptPasswordEncoder();
+	}
+
+	@Bean
+	public JavaMailSender javaMailSender() {
+		return new JavaMailSenderImpl();
 	}
 }
