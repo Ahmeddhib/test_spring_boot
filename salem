@@ -1,25 +1,29 @@
-Started by GitHub push by Ahmeddhib
-Lightweight checkout support not available, falling back to full checkout.
-Checking out git https://github.com/Ahmeddhib/StudentsManagement-DevOps.git into /var/lib/jenkins/workspace/webhootest@script/abc04ede375ecb15ceabc64bbe1ecb511190b2e163171f8cd4e8ce8b1f118bcb to read Jenkinsfile
-The recommended git tool is: NONE
-No credentials specified
-Cloning the remote Git repository
-Cloning repository https://github.com/Ahmeddhib/StudentsManagement-DevOps.git
- > git init /var/lib/jenkins/workspace/webhootest@script/abc04ede375ecb15ceabc64bbe1ecb511190b2e163171f8cd4e8ce8b1f118bcb # timeout=10
-Fetching upstream changes from https://github.com/Ahmeddhib/StudentsManagement-DevOps.git
- > git --version # timeout=10
- > git --version # 'git version 2.25.1'
- > git fetch --tags --force --progress -- https://github.com/Ahmeddhib/StudentsManagement-DevOps.git +refs/heads/*:refs/remotes/origin/* # timeout=10
- > git config remote.origin.url https://github.com/Ahmeddhib/StudentsManagement-DevOps.git # timeout=10
- > git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origin/* # timeout=10
-Avoid second fetch
-Seen branch in repository origin/main
-Seen 1 remote branch
- > git show-ref --tags -d # timeout=10
-Checking out Revision 0c968e0f9d2396e921dd71e3a9ad42d207695be6 (origin/main)
- > git config core.sparsecheckout # timeout=10
- > git checkout -f 0c968e0f9d2396e921dd71e3a9ad42d207695be6 # timeout=10
-Commit message: "testing 2"
-First time build. Skipping changelog.
-ERROR: /var/lib/jenkins/workspace/webhootest@script/abc04ede375ecb15ceabc64bbe1ecb511190b2e163171f8cd4e8ce8b1f118bcb/Jenkinsfile not found
-Finished: FAILURE
+pipeline {
+    agent any
+    
+    triggers {
+        pollSCM('H/5 * * * *')  // Poll every 5 minutes
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([$class: 'GitSCM', 
+                         branches: [[name: '*/main']],
+                         extensions: [], 
+                         userRemoteConfigs: [[url: 'https://github.com/Ahmeddhib/StudentsManagement-DevOps.git']]])
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh 'echo "Building your project..."'
+                // Add your actual build commands
+                // Examples:
+                // sh 'mvn clean compile'  # For Maven
+                // sh 'npm install'        # For Node.js
+                // sh 'dotnet build'       # For .NET
+            }
+        }
+    }
+}
