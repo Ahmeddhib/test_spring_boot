@@ -1,20 +1,20 @@
 pipeline {
     agent any
-    
+
     triggers {
         pollSCM('H/5 * * * *')  // Poll every 5 minutes
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
-                checkout([$class: 'GitSCM', 
+                checkout([$class: 'GitSCM',
                          branches: [[name: '*/main']],
-                         extensions: [], 
+                         extensions: [],
                          userRemoteConfigs: [[url: 'https://github.com/Ahmeddhib/StudentsManagement-DevOps.git']]])
             }
         }
-        
+
         stage('Build') {
             steps {
                 sh 'echo "Building your project..."'
@@ -27,3 +27,4 @@ pipeline {
         }
     }
 }
+salem
