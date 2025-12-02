@@ -1,30 +1,15 @@
-pipeline {
-    agent any
+# Dockerfile CORRECT
+# Étape 1: Builder l'application
+FROM maven:3.8.6-openjdk-17-alpine AS builder
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-    triggers {
-        pollSCM('H/5 * * * *')  // Poll every 5 minutes
-    }
-
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout([$class: 'GitSCM',
-                         branches: [[name: '*/main']],
-                         extensions: [],
-                         userRemoteConfigs: [[url: 'https://github.com/Ahmeddhib/StudentsManagement-DevOps.git']]])
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh 'echo "Building your project..."'
-                // Add your actual build commands
-                // Examples:
-                // sh 'mvn clean compile'  # For Maven
-                // sh 'npm install'        # For Node.js
-                // sh 'dotnet build'       # For .NET
-            }
-        }
-    }
-}
-salem
+# Étape 2: Créer l'image d'exécution
+FROM openjdk:17-jre-alpine
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
