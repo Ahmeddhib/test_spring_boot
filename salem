@@ -1,13 +1,11 @@
-# Dockerfile qui MARCHE
-FROM maven:3.8.6-amazoncorretto-17-alpine AS builder
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline
-COPY src ./src
-RUN mvn clean package -DskipTests
+# Utilise une image OpenJDK légère
+FROM openjdk:17-jdk-alpine
 
-FROM amazoncorretto:17-alpine
+# Définir le dossier de travail
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Copier le jar compilé dans le conteneur
+COPY target/*.jar app.jar
+
+# Définir le point d’entrée
+ENTRYPOINT ["java","-jar","app.jar"]
