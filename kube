@@ -1,0 +1,592 @@
+Étape 1 : Créer la structure de projet
+bash
+# Se connecter à Ubuntu
+ssh utilisateur@adresse-ip-vm
+
+# Créer le répertoire du TP
+mkdir -p ~/tp-kubernetes-spring
+cd ~/tp-kubernetes-spring
+
+# Structure des dossiers
+mkdir -p k8s mysql spring-app jenkins
+🔧 1. Configuration Minikube
+bash
+# Vérifier que Minikube fonctionne
+minikube status
+
+# Si pas démarré
+minikube start --driver=docker --memory=4096 --cpus=2
+
+# Activer les addons
+minikube addons enable dashboard
+minikube addons enable ingress
+
+# Vérifier
+kubectl get nodes
+minikube ip
+📦 2. Création du Namespace
+bash
+# Créer le namespace devops
+kubectl create namespace devops
+
+# Vérifier
+kubectl get namespaces
+kubectl config set-context --current --namespace=devops
+🗄️ 3. Déploiement MySQL avec PersistentVolume
+3.1 Créer le PersistentVolume
+bash
+# Fichier : k8s/mysql-pv.yaml
+cat > k8s/mysql-pv.yaml << 'EOF'
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  namespace: devops
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/mysql"
+EOF
+
+# Appliquer
+kubectl apply -f k8s/mysql-pv.yaml
+3.2 Créer le PersistentVolumeClaim
+bash
+# Fichier : k8s/mysql-pvc.yaml
+cat > k8s/mysql-pvc.yaml << 'EOF'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: devops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+
+kubectl apply -f k8s/mysql-pvc.yaml
+3.3 Créer le Deployment MySQL
+bash
+# Fichier : k8s/mysql-deployment.yaml
+cat > k8s/mysql-deployment.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: root123
+        - name: MYSQL_DATABASE
+          value: springdb
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: mysql-storage
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+EOF
+
+kubectl apply -f k8s/mysql-deployment.yaml
+3.4 Créer le Service MySQL
+bash
+# Fichier : k8s/mysql-service.yaml
+cat > k8s/mysql-service.yaml << 'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: devops
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+  type: ClusterIP
+EOF
+
+kubectl apply -f k8s/mysql-service.yaml
+🌱 4. Déploiement Spring Boot
+4.1 Créer un exemple d'application Spring Boot
+bash
+# Créer un simple projet Spring Boot (ou utiliser votre propre projet)
+# Pour la démo, on va créer un Dockerfile simple
+cat > spring-app/Dockerfile << 'EOF'
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+EOF
+
+# Créer un fichier de build Maven fictif pour la démo
+cat > spring-app/pom.xml << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <groupId>com.example</groupId>
+    <artifactId>spring-boot-app</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.7.0</version>
+    </parent>
+    
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+    
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+        </dependency>
+    </dependencies>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+EOF
+4.2 Créer ConfigMap et Secret
+bash
+# Encoder les credentials en base64
+echo -n "spring" | base64  # Résultat: c3ByaW5n
+echo -n "spring123" | base64  # Résultat: c3ByaW5nMTIz
+
+# Fichier : k8s/spring-config.yaml
+cat > k8s/spring-config.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-config
+  namespace: devops
+data:
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql-service:3306/springdb
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+data:
+  SPRING_DATASOURCE_USERNAME: c3ByaW5n
+  SPRING_DATASOURCE_PASSWORD: c3ByaW5nMTIz
+EOF
+
+kubectl apply -f k8s/spring-config.yaml
+4.3 Créer le Deployment Spring Boot
+bash
+# Fichier : k8s/spring-deployment.yaml
+cat > k8s/spring-deployment.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-app
+  namespace: devops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: spring-app
+  template:
+    metadata:
+      labels:
+        app: spring-app
+    spec:
+      containers:
+      - name: spring-app
+        image: your-dockerhub/spring-app:1.0  # Remplacez par votre image
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: spring-config
+        - secretRef:
+            name: spring-secret
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+EOF
+
+# Pour la démo, on va utiliser une image publique de test
+sed -i 's|your-dockerhub/spring-app:1.0|paulbouwer/hello-kubernetes:1.10|g' k8s/spring-deployment.yaml
+
+kubectl apply -f k8s/spring-deployment.yaml
+4.4 Créer le Service Spring Boot
+bash
+# Fichier : k8s/spring-service.yaml
+cat > k8s/spring-service.yaml << 'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-service
+  namespace: devops
+spec:
+  selector:
+    app: spring-app
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30080
+  type: NodePort
+EOF
+
+kubectl apply -f k8s/spring-service.yaml
+✅ 5. Vérification du Déploiement
+bash
+# 1. Vérifier les Pods
+kubectl get pods -n devops -o wide
+
+# 2. Vérifier les Services
+kubectl get svc -n devops
+
+# 3. Vérifier les ConfigMaps et Secrets
+kubectl get configmap -n devops
+kubectl get secret -n devops
+
+# 4. Vérifier les PV et PVC
+kubectl get pv,pvc -n devops
+
+# 5. Vérifier les logs
+kubectl logs -n devops deployment/spring-app --tail=10
+
+# 6. Obtenir l'URL d'accès
+minikube service spring-service -n devops --url
+
+# 7. Tester l'application (dans un autre terminal)
+curl $(minikube service spring-service -n devops --url)
+
+# 8. Accéder à MySQL
+kubectl exec -it -n devops $(kubectl get pods -n devops -l app=mysql -o jsonpath='{.items[0].metadata.name}') -- mysql -u root -proot123 -e "SHOW DATABASES;"
+⚙️ 6. Installation et Configuration de Jenkins
+6.1 Installer Jenkins
+bash
+# Mettre à jour
+sudo apt update
+
+# Installer Java
+sudo apt install -y openjdk-17-jdk
+
+# Ajouter le repository Jenkins
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+# Installer Jenkins
+sudo apt update
+sudo apt install -y jenkins
+
+# Démarrer Jenkins
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+
+# Vérifier
+sudo systemctl status jenkins
+
+# Obtenir le mot de passe admin
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+6.2 Configurer kubectl pour Jenkins
+bash
+# Copier la configuration kubeconfig vers Jenkins
+sudo mkdir -p /var/lib/jenkins/.kube
+sudo cp ~/.kube/config /var/lib/jenkins/.kube/
+
+# Changer les permissions
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.kube
+
+# Pour Minikube, copier aussi les certificats
+sudo mkdir -p /var/lib/jenkins/.minikube
+sudo cp -r ~/.minikube/* /var/lib/jenkins/.minikube/
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.minikube
+
+# Mettre à jour les chemins dans le fichier config
+sudo sed -i "s|/home/$(whoami)/.minikube|/var/lib/jenkins/.minikube|g" /var/lib/jenkins/.kube/config
+
+# Tester que Jenkins peut utiliser kubectl
+sudo -u jenkins kubectl get nodes
+6.3 Installer les plugins nécessaires
+Accéder à Jenkins : http://<votre-ip>:8080
+
+Installer les plugins suggérés
+
+Installer manuellement :
+
+Kubernetes
+
+Docker Pipeline
+
+Git
+
+Maven Integration
+
+🔁 7. Création du Pipeline CI/CD
+7.1 Créer le fichier Jenkinsfile
+bash
+# Fichier : Jenkinsfile
+cat > Jenkinsfile << 'EOF'
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_IMAGE = 'your-dockerhub/spring-app'
+        K8S_NAMESPACE = 'devops'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-repo/spring-boot-app.git'
+            }
+        }
+        
+        stage('Build with Maven') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+                }
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    docker.withRegistry("https://${DOCKER_REGISTRY}", 'docker-hub-credentials') {
+                        docker.image("${DOCKER_IMAGE}:${BUILD_NUMBER}").push()
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Mettre à jour l'image dans le deployment
+                    sh """
+                    kubectl set image deployment/spring-app spring-app=${DOCKER_IMAGE}:${BUILD_NUMBER} -n ${K8S_NAMESPACE}
+                    kubectl rollout status deployment/spring-app -n ${K8S_NAMESPACE}
+                    """
+                }
+            }
+        }
+        
+        stage('Test Deployment') {
+            steps {
+                script {
+                    def url = sh(script: "minikube service spring-service -n ${K8S_NAMESPACE} --url", returnStdout: true).trim()
+                    sh "curl -f ${url}/actuator/health"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline exécuté avec succès!'
+        }
+        failure {
+            echo 'Pipeline a échoué!'
+        }
+    }
+}
+EOF
+7.2 Créer le fichier de déploiement pour Jenkins
+bash
+# Fichier : k8s/jenkins-deployment.yaml (optionnel - si vous voulez Jenkins dans Kubernetes)
+cat > k8s/jenkins-deployment.yaml << 'EOF'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jenkins
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:lts
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        volumeMounts:
+        - name: jenkins-home
+          mountPath: /var/jenkins_home
+      volumes:
+      - name: jenkins-home
+        persistentVolumeClaim:
+          claimName: jenkins-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  selector:
+    app: jenkins
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30000
+  type: NodePort
+EOF
+🚀 8. Exécution et Test
+8.1 Tester manuellement le déploiement
+bash
+# 1. Vérifier que tout est déployé
+kubectl get all -n devops
+
+# 2. Exposer l'application
+minikube tunnel &  # Lancer dans un terminal séparé
+
+# 3. Obtenir l'URL
+minikube service list
+
+# 4. Tester avec curl
+curl http://$(minikube ip):30080
+
+# 5. Accéder au dashboard Kubernetes
+minikube dashboard
+8.2 Script de test automatique
+bash
+# Fichier : test-deployment.sh
+cat > test-deployment.sh << 'EOF'
+#!/bin/bash
+
+echo "=== Test du déploiement Kubernetes ==="
+
+# 1. Vérifier les pods
+echo "1. Pods dans le namespace devops:"
+kubectl get pods -n devops
+
+# 2. Vérifier les services
+echo -e "\n2. Services:"
+kubectl get svc -n devops
+
+# 3. Vérifier la connectivité MySQL
+echo -e "\n3. Test de connexion MySQL:"
+kubectl exec -it -n devops $(kubectl get pods -n devops -l app=mysql -o jsonpath='{.items[0].metadata.name}') -- mysql -u root -proot123 -e "SELECT 'MySQL est opérationnel' AS status;"
+
+# 4. Tester l'application Spring Boot
+echo -e "\n4. Test de l'application Spring Boot:"
+URL=$(minikube service spring-service -n devops --url)
+curl -s $URL | head -20
+
+# 5. Vérifier les logs
+echo -e "\n5. Derniers logs de l'application:"
+kubectl logs -n devops deployment/spring-app --tail=5
+
+echo -e "\n=== Test terminé ==="
+EOF
+
+chmod +x test-deployment.sh
+./test-deployment.sh
+🔧 9. Nettoyage
+bash
+# Nettoyer le namespace devops
+kubectl delete namespace devops
+
+# OU nettoyer spécifiquement
+kubectl delete -f k8s/spring-service.yaml
+kubectl delete -f k8s/spring-deployment.yaml
+kubectl delete -f k8s/spring-config.yaml
+kubectl delete -f k8s/mysql-service.yaml
+kubectl delete -f k8s/mysql-deployment.yaml
+kubectl delete -f k8s/mysql-pvc.yaml
+kubectl delete -f k8s/mysql-pv.yaml
+
+# Nettoyer Minikube
+minikube delete
+
+# Réinitialiser
+minikube start
+📝 10. Résumé des Commandes Importantes
+bash
+# Monitoring
+kubectl get all -n devops
+kubectl describe pod <pod-name> -n devops
+kubectl logs -f <pod-name> -n devops
+
+# Debugging
+kubectl exec -it <pod-name> -n devops -- /bin/sh
+kubectl get events -n devops --sort-by='.lastTimestamp'
+
+# Scaling
+kubectl scale deployment spring-app --replicas=3 -n devops
+
+# Rolling update
+kubectl set image deployment/spring-app spring-app=new-image:tag -n devops
+kubectl rollout status deployment/spring-app -n devops
+
+# Rollback
+kubectl rollout undo deployment/spring-app -n devops
+
+# Port forwarding
+kubectl port-forward svc/spring-service 8080:8080 -n devops
