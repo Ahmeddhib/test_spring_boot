@@ -1,584 +1,664 @@
-Solution Définitive : Installation Complète avec Script
-Étape 1 : Nettoyage complet
+DÉPLOIEMENT DE VOTRE PROJET STUDENT MANAGEMENT SUR KUBERNETES
+Excellent ! Vous avez un vrai projet Spring Boot avec MySQL. Voici comment le déployer sur Kubernetes.
+
+📁 STRUCTURE DES FICHIERS NÉCESSAIRES
+1. CORRIGER VOTRE Dockerfile
+dockerfile
+# ~/StudentsManagement-DevOps/Dockerfile
+FROM maven:3.8.6-amazoncorretto-17 AS builder
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM amazoncorretto:17-alpine
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]  # CORRECTION ICI : brackets
+Correction importante : Ligne 12, utilisez ["java", "-jar", "app.jar"] au lieu de "java", "-jar", "app.jar"
+
+2. CRÉER LES FICHIERS KUBERNETES
 bash
-# Arrêter tous les services
-sudo systemctl stop kubelet
-sudo systemctl stop docker
-sudo systemctl stop containerd
-
-# Désinstaller tout
-sudo apt remove --purge kubelet kubeadm kubectl docker.io containerd -y
-sudo apt autoremove -y
-
-# Nettoyer les fichiers
-sudo rm -rf /etc/kubernetes
-sudo rm -rf ~/.kube
-sudo rm -rf /var/lib/etcd
-sudo rm -rf /var/lib/docker
-sudo rm -rf /var/lib/containerd
-
-# Nettoyer iptables
-sudo iptables -F && sudo iptables -t nat -F && sudo iptables -t mangle -F && sudo iptables -X
-Étape 2 : Installation avec le script officiel Kubernetes
-bash
-# Télécharger et exécuter le script d'installation
-curl -fsSL https://get.k8s.io | bash
-
-# OU installer spécifiquement
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubeadm"
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubelet"
-
-# Rendre exécutable
-chmod +x kubectl kubeadm kubelet
-
-# Déplacer
-sudo mv kubectl kubeadm kubelet /usr/local/bin/
-Étape 3 : Installer containerd (CRI recommandé)
-bash
-# Installer containerd
-sudo apt update
-sudo apt install -y containerd
-
-# Créer la configuration
-sudo mkdir -p /etc/containerd
-sudo containerd config default | sudo tee /etc/containerd/config.toml
-
-# Modifier la configuration pour systemd cgroups
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-
-# Redémarrer containerd
-sudo systemctl restart containerd
-sudo systemctl enable containerd
-
-# Vérifier que containerd fonctionne
-sudo systemctl status containerd
-sudo ctr version
-Étape 4 : Configurer les modules kernel
-bash
-# Charger les modules nécessaires
-sudo modprobe overlay
-sudo modprobe br_netfilter
-
-# Rendre permanent
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-
-# Configurer sysctl
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-
-# Appliquer
-sudo sysctl --system
-Étape 5 : Désactiver swap
-bash
-# Désactiver immédiatement
-sudo swapoff -a
-
-# Désactiver définitivement
-sudo sed -i '/swap/d' /etc/fstab
-
-# Vérifier
-free -h
-Étape 6 : Initialiser kubeadm avec configuration spécifique
-bash
-# Créer un fichier de configuration pour kubeadm
-cat <<EOF | sudo tee kubeadm-config.yaml
-apiVersion: kubeadm.k8s.io/v1beta3
-kind: InitConfiguration
-nodeRegistration:
-  criSocket: "unix:///var/run/containerd/containerd.sock"
+# Créer le répertoire pour les fichiers Kubernetes
+mkdir -p ~/tp-kubernetes-student
+cd ~/tp-kubernetes-student
+🗄️ PARTIE 1 : DÉPLOIEMENT MYSQL
+Fichier 1 : mysql-pv-pvc.yaml
+yaml
+# mysql-pv-pvc.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  namespace: devops
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/mysql-student"
+    type: DirectoryOrCreate
 ---
-apiVersion: kubeadm.k8s.io/v1beta3
-kind: ClusterConfiguration
-kubernetesVersion: 1.30.0
-networking:
-  podSubnet: "192.168.0.0/16"
-EOF
-
-# Initialiser avec le fichier de configuration
-sudo kubeadm init --config=kubeadm-config.yaml
-Étape 7 : Si toujours erreur CRI, forcer l'initialisation
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: devops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+Fichier 2 : mysql-secret.yaml
+yaml
+# mysql-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: devops
+type: Opaque
+data:
+  # echo -n "root" | base64
+  root-password: cm9vdA==
+  # echo -n "studentdb" | base64
+  database: c3R1ZGVudGRi
+Fichier 3 : mysql-deployment.yaml
+yaml
+# mysql-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: root-password
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: database
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+Fichier 4 : mysql-service.yaml
+yaml
+# mysql-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: devops
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+  type: ClusterIP
+🌱 PARTIE 2 : DÉPLOIEMENT SPRING BOOT
+Fichier 5 : application-configmap.yaml
+yaml
+# application-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: student-app-config
+  namespace: devops
+data:
+  application.properties: |
+    spring.application.name=student-management
+    spring.datasource.url=jdbc:mysql://mysql-service:3306/studentdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    spring.jpa.show-sql=true
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+    
+    # Server configuration
+    server.port=8080
+    server.servlet.context-path=/student
+    
+    # Swagger/OpenAPI
+    springdoc.api-docs.path=/api-docs
+    springdoc.swagger-ui.path=/swagger-ui.html
+    
+    # Logging
+    logging.level.org.springframework.web=INFO
+    logging.level.tn.esprit=DEBUG
+Fichier 6 : application-secret.yaml
+yaml
+# application-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: student-app-secret
+  namespace: devops
+type: Opaque
+stringData:
+  # Utilisez stringData pour ne pas encoder en base64
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_PASSWORD: root
+Fichier 7 : spring-deployment.yaml
+yaml
+# spring-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-app-deployment
+  namespace: devops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: student-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: student-app
+    spec:
+      containers:
+      - name: student-app
+        image: student-management:latest  # À remplacer par votre image Docker
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_CONFIG_LOCATION
+          value: file:/app/config/application.properties
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: student-app-secret
+              key: SPRING_DATASOURCE_USERNAME
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: student-app-secret
+              key: SPRING_DATASOURCE_PASSWORD
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /student/actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /student/actuator/health
+            port: 8080
+          initialDelaySeconds: 90
+          periodSeconds: 20
+          timeoutSeconds: 5
+      volumes:
+      - name: config-volume
+        configMap:
+          name: student-app-config
+          items:
+          - key: application.properties
+            path: application.properties
+Fichier 8 : spring-service.yaml
+yaml
+# spring-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: student-app-service
+  namespace: devops
+spec:
+  selector:
+    app: student-app
+  ports:
+  - port: 80
+    targetPort: 8080
+    nodePort: 30080
+  type: NodePort
+Fichier 9 : spring-ingress.yaml (Optionnel)
+yaml
+# spring-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: student-app-ingress
+  namespace: devops
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /student/$2
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /student(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: student-app-service
+            port:
+              number: 80
+🚀 PARTIE 3 : BUILD ET DÉPLOIEMENT
+Étape 1 : Build de l'image Docker
 bash
-# Essayer cette commande qui ignore toutes les vérifications préliminaires
-sudo kubeadm init \
-  --pod-network-cidr=192.168.0.0/16 \
-  --ignore-preflight-errors=all \
-  --cri-socket=unix:///var/run/containerd/containerd.sock \
-  --v=5
-Étape 8 : Configuration après succès
+# Naviguer vers votre projet
+cd ~/StudentsManagement-DevOps
+
+# 1. Corriger le Dockerfile si nécessaire
+sed -i '12s/ENTRYPOINT "java", "-jar", "app.jar"/ENTRYPOINT ["java", "-jar", "app.jar"]/' Dockerfile
+
+# 2. Build l'image Docker
+docker build -t student-management:latest .
+
+# 3. Tag l'image pour Minikube
+docker tag student-management:latest student-management:latest
+
+# 4. Charger l'image dans Minikube
+minikube image load student-management:latest
+
+# OU utiliser le docker daemon de Minikube
+eval $(minikube docker-env)
+docker build -t student-management:latest .
+Étape 2 : Créer les fichiers YAML
 bash
-# Si kubeadm init réussit, configurer kubectl
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+# Créer tous les fichiers YAML dans le dossier tp-kubernetes-student
+cd ~/tp-kubernetes-student
 
-# Installer Calico (réseau pod)
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
-
-# OU Flannel (plus simple)
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-
-# Autoriser les pods sur le master (single node)
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-Solution Alternative : Utiliser Minikube (Beaucoup Plus Simple)
-Si vous continuez à avoir des problèmes, je vous recommande d'utiliser Minikube pour votre démonstration :
-
+# Créer chaque fichier avec le contenu ci-dessus
+nano mysql-pv-pvc.yaml
+nano mysql-secret.yaml
+nano mysql-deployment.yaml
+nano mysql-service.yaml
+nano application-configmap.yaml
+nano application-secret.yaml
+nano spring-deployment.yaml
+nano spring-service.yaml
+Étape 3 : Appliquer les configurations
 bash
-# Désinstaller tout d'abord
-sudo kubeadm reset -f
-sudo apt remove --purge kubelet kubeadm kubectl -y
+# 1. Créer le namespace si pas déjà fait
+kubectl create namespace devops
 
-# Installer Minikube
-curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-sudo install minikube-linux-amd64 /usr/local/bin/minikube
+# 2. Déployer MySQL
+kubectl apply -f mysql-pv-pvc.yaml
+kubectl apply -f mysql-secret.yaml
+kubectl apply -f mysql-deployment.yaml
+kubectl apply -f mysql-service.yaml
 
-# Installer les dépendances
-sudo apt install -y conntrack
+# 3. Attendre que MySQL soit prêt
+echo "Attente de MySQL..."
+sleep 30
+kubectl get pods -n devops -l app=mysql
 
-# Démarrer Minikube
-minikube start --driver=docker
+# 4. Déployer Spring Boot
+kubectl apply -f application-configmap.yaml
+kubectl apply -f application-secret.yaml
+kubectl apply -f spring-deployment.yaml
+kubectl apply -f spring-service.yaml
 
-# Configurer kubectl
-minikube kubectl -- get pods -A
-
-# Créer un alias pour kubectl
-alias kubectl="minikube kubectl --"
-
-# Vérifier
-kubectl get nodes
-kubectl cluster-info
-Vérification des problèmes courants
-Si rien ne fonctionne, exécutez ces commandes de diagnostic :
-
-bash
-# 1. Vérifier les sockets CRI
-ls -la /var/run/ | grep -E "\.sock"
-
-# 2. Vérifier les services
-sudo systemctl status containerd
-sudo systemctl status docker
-
-# 3. Vérifier les logs containerd
-sudo journalctl -u containerd -f
-
-# 4. Vérifier si containerd écoute
-sudo netstat -lnp | grep containerd
-
-# 5. Tester containerd manuellement
-sudo ctr images pull docker.io/library/nginx:latest
-sudo ctr images ls
-Script Automatique Complet
-Créez un fichier install-k8s.sh :
-
+# 5. Vérifier
+kubectl get all -n devops
+🔧 PARTIE 4 : SCRIPT DE DÉPLOIEMENT AUTOMATISÉ
 bash
 #!/bin/bash
+# deploy-student-app.sh
 
-# Nettoyage
-sudo kubeadm reset -f
-sudo apt remove --purge kubelet kubeadm kubectl docker.io containerd -y
-sudo apt autoremove -y
+echo "=== DÉPLOIEMENT STUDENT MANAGEMENT APP ==="
 
-# Installation
-sudo apt update
-sudo apt install -y apt-transport-https ca-certificates curl
+# 1. Variables
+PROJECT_DIR="$HOME/StudentsManagement-DevOps"
+K8S_DIR="$HOME/tp-kubernetes-student"
+NAMESPACE="devops"
 
-# Docker
-sudo apt install -y docker.io
-sudo systemctl enable docker
-sudo systemctl start docker
+# 2. Vérifier Minikube
+echo "Vérification de Minikube..."
+minikube status || { echo "Minikube non démarré. Démarrage..."; minikube start; }
 
-# Containerd
-sudo apt install -y containerd
-sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-sudo systemctl restart containerd
+# 3. Créer namespace
+echo "Création du namespace..."
+kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
 
-# Kubernetes
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update
-sudo apt install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+# 4. Build Docker image
+echo "Build de l'image Docker..."
+cd $PROJECT_DIR
 
-# Swap
-sudo swapoff -a
-sudo sed -i '/swap/d' /etc/fstab
+# Utiliser le docker daemon de Minikube
+eval $(minikube docker-env 2>/dev/null || echo "echo 'Using host docker'")
 
-# Initialisation FORCÉE
-sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all
+docker build -t student-management:latest .
 
-# Configuration
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+# 5. Déployer MySQL
+echo "Déploiement MySQL..."
+cd $K8S_DIR
 
-# Réseau
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+kubectl apply -f mysql-pv-pvc.yaml
+sleep 5
+kubectl apply -f mysql-secret.yaml
+kubectl apply -f mysql-deployment.yaml
+kubectl apply -f mysql-service.yaml
 
-# Single node
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+echo "Attente du démarrage de MySQL..."
+sleep 40
 
-echo "Installation terminée!"
-Exécutez-le :
+# 6. Vérifier MySQL
+MYSQL_POD=$(kubectl get pods -n $NAMESPACE -l app=mysql -o jsonpath='{.items[0].metadata.name}')
+if [ -n "$MYSQL_POD" ]; then
+    echo "Vérification MySQL..."
+    kubectl exec -n $NAMESPACE $MYSQL_POD -- mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS studentdb; SHOW DATABASES;" 2>/dev/null
+fi
 
+# 7. Déployer Spring Boot
+echo "Déploiement Spring Boot..."
+kubectl apply -f application-configmap.yaml
+kubectl apply -f application-secret.yaml
+
+# Mettre à jour l'image dans le deployment
+sed -i 's|image: student-management:latest|image: student-management:latest|g' spring-deployment.yaml
+kubectl apply -f spring-deployment.yaml
+kubectl apply -f spring-service.yaml
+
+# 8. Attendre l'application
+echo "Attente du démarrage de l'application..."
+sleep 60
+
+# 9. Vérification
+echo "=== VÉRIFICATION ==="
+kubectl get all -n $NAMESPACE
+
+echo -e "\n=== URLS ==="
+echo "MySQL interne: mysql-service:3306"
+echo "Application: $(minikube service student-app-service -n $NAMESPACE --url)"
+
+echo -e "\n=== COMMANDES UTILES ==="
+echo "1. Logs Spring: kubectl logs -n $NAMESPACE deployment/student-app-deployment -f"
+echo "2. Shell MySQL: kubectl exec -n $NAMESPACE -it $MYSQL_POD -- mysql -uroot -proot"
+echo "3. Accès web: minikube service student-app-service -n $NAMESPACE"
+
+echo -e "\n=== DÉPLOIEMENT TERMINÉ ==="
+📝 PARTIE 5 : PIPELINE JENKINS POUR VOTRE PROJET
+Jenkinsfile pour votre projet
+groovy
+// Jenkinsfile
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'student-management'
+        K8S_NAMESPACE = 'devops'
+        REGISTRY = ''  // Docker Hub ou registry privé
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', 
+                url: 'https://github.com/votre-repo/StudentsManagement-DevOps.git'
+                // Ou utiliser un dépôt local
+                // checkout scm
+            }
+        }
+        
+        stage('Build with Maven') {
+            steps {
+                sh '''
+                echo "Building Spring Boot application..."
+                mvn clean package -DskipTests
+                ls -la target/*.jar
+                '''
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build avec Minikube Docker
+                    sh '''
+                    eval $(minikube docker-env)
+                    docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                    docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
+                    '''
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    dir('k8s') {
+                        // Mettre à jour l'image dans le deployment
+                        sh """
+                        sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${BUILD_NUMBER}|g' spring-deployment.yaml
+                        
+                        # Appliquer les configurations
+                        kubectl apply -f mysql-pv-pvc.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f mysql-secret.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f mysql-deployment.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f mysql-service.yaml -n ${K8S_NAMESPACE}
+                        
+                        # Attendre MySQL
+                        sleep 30
+                        
+                        kubectl apply -f application-configmap.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f application-secret.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f spring-deployment.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f spring-service.yaml -n ${K8S_NAMESPACE}
+                        
+                        # Vérifier le déploiement
+                        kubectl rollout status deployment/student-app-deployment -n ${K8S_NAMESPACE}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Smoke Test') {
+            steps {
+                script {
+                    sh '''
+                    sleep 30
+                    URL=$(minikube service student-app-service -n ${K8S_NAMESPACE} --url)
+                    echo "Testing application at: ${URL}"
+                    curl -f ${URL}/student/actuator/health || curl -f ${URL}/student
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '✅ Pipeline réussi! Application déployée.'
+        }
+        failure {
+            echo '❌ Pipeline échoué! Vérifier les logs.'
+            sh '''
+            kubectl get pods -n ${K8S_NAMESPACE}
+            kubectl logs -n ${K8S_NAMESPACE} deployment/student-app-deployment --tail=50
+            '''
+        }
+    }
+}
+🔍 PARTIE 6 : VÉRIFICATION ET TESTS
+Script de vérification
 bash
-chmod +x install-k8s.sh
-sudo ./install-k8s.sh
-*******************************************************************************************
+#!/bin/bash
+# verify-deployment.sh
 
-🖥️ Étape 1 : Préparer les Machines Ubuntu
-1.1 Configuration des machines (3 machines minimum)
+echo "=== VÉRIFICATION DU DÉPLOIEMENT ==="
+
+NAMESPACE="devops"
+
+echo "1. État des pods:"
+kubectl get pods -n $NAMESPACE -o wide
+
+echo -e "\n2. État des services:"
+kubectl get svc -n $NAMESPACE
+
+echo -e "\n3. Logs MySQL:"
+MYSQL_POD=$(kubectl get pods -n $NAMESPACE -l app=mysql -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+if [ -n "$MYSQL_POD" ]; then
+    kubectl logs -n $NAMESPACE $MYSQL_POD --tail=10
+else
+    echo "MySQL pod non trouvé"
+fi
+
+echo -e "\n4. Logs Spring Boot:"
+SPRING_POD=$(kubectl get pods -n $NAMESPACE -l app=student-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+if [ -n "$SPRING_POD" ]; then
+    kubectl logs -n $NAMESPACE $SPRING_POD --tail=20
+else
+    echo "Spring Boot pod non trouvé"
+fi
+
+echo -e "\n5. Test de connexion MySQL:"
+if [ -n "$MYSQL_POD" ]; then
+    kubectl exec -n $NAMESPACE $MYSQL_POD -- mysql -uroot -proot -e "USE studentdb; SHOW TABLES;" 2>/dev/null || echo "Connexion échouée"
+fi
+
+echo -e "\n6. Test de l'application:"
+URL=$(minikube service student-app-service -n $NAMESPACE --url 2>/dev/null)
+if [ -n "$URL" ]; then
+    echo "URL: $URL"
+    echo "Test health endpoint:"
+    curl -s "${URL}/student/actuator/health" | head -5
+    echo -e "\nTest API endpoint:"
+    curl -s "${URL}/student/api/students" | head -5
+else
+    echo "Service non accessible"
+fi
+
+echo -e "\n7. Événements récents:"
+kubectl get events -n $NAMESPACE --sort-by='.lastTimestamp' | tail -10
+
+echo -e "\n=== VÉRIFICATION TERMINÉE ==="
+📊 TABLEAU DE VÉRIFICATION POUR VOTRE TP
+Étape	Fichier	Commande de vérification	Résultat attendu
+1. MySQL PV/PVC	mysql-pv-pvc.yaml	kubectl get pv,pvc -n devops	1 PV + 1 PVC Bound
+2. MySQL Secret	mysql-secret.yaml	kubectl get secret mysql-secret -n devops	Secret créé
+3. MySQL Deployment	mysql-deployment.yaml	kubectl get pods -n devops -l app=mysql	1/1 Running
+4. MySQL Service	mysql-service.yaml	kubectl get svc mysql-service -n devops	ClusterIP 3306
+5. App ConfigMap	application-configmap.yaml	kubectl get configmap student-app-config -n devops -o yaml	Config créée
+6. App Secret	application-secret.yaml	kubectl get secret student-app-secret -n devops	Secret créé
+7. Spring Deployment	spring-deployment.yaml	kubectl get pods -n devops -l app=student-app	2/2 Running
+8. Spring Service	spring-service.yaml	kubectl get svc student-app-service -n devops	NodePort 30080
+9. Test DB	-	kubectl exec -it mysql-pod -- mysql -uroot -proot -e "SHOW DATABASES;"	Voir studentdb
+10. Test App	-	curl $(minikube service student-app-service --url)/student/actuator/health	{"status":"UP"}
+🚨 DÉPANNAGE SPÉCIFIQUE À VOTRE PROJET
+Problème 1 : Connexion à MySQL échoue
 bash
-# Machine 1 : Master (2GB RAM minimum, 2 CPUs)
-# Machine 2 : Worker 1 (1GB RAM minimum, 1 CPU)
-# Machine 3 : Worker 2 (1GB RAM minimum, 1 CPU)
+# Vérifier les logs MySQL
+kubectl logs -n devops deployment/mysql-deployment
 
-# Sur CHAQUE machine, exécuter :
-sudo hostnamectl set-hostname master  # Sur master
-sudo hostnamectl set-hostname worker1 # Sur worker1
-sudo hostnamectl set-hostname worker2 # Sur worker2
+# Vérifier la connexion depuis un pod test
+kubectl run mysql-test --image=mysql:8.0 -n devops --rm -it -- \
+  mysql -hmysql-service -uroot -proot -e "SHOW DATABASES;"
 
-# Ajouter les hosts dans /etc/hosts sur CHAQUE machine
-sudo tee -a /etc/hosts <<EOF
-192.168.1.100 master
-192.168.1.101 worker1
-192.168.1.102 worker2
-EOF
-
-# Remplacer les IP par vos adresses réelles
-1.2 Mise à jour et installation des prérequis
-bash
-# Sur CHAQUE machine
-sudo apt update
-sudo apt upgrade -y
-
-# Installer les outils nécessaires
-sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
-🐳 Étape 2 : Installer containerd (Runtime de conteneurs)
-2.1 Installer containerd
-bash
-# Sur CHAQUE machine
-sudo apt install -y containerd
-
-# Configurer containerd
-sudo mkdir -p /etc/containerd
-sudo containerd config default | sudo tee /etc/containerd/config.toml
-
-# Modifier la configuration pour utiliser systemd cgroup
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-
-# Redémarrer containerd
-sudo systemctl restart containerd
-sudo systemctl enable containerd
-
-# Vérifier
-sudo systemctl status containerd
-2.2 Configuration des modules kernel
-bash
-# Sur CHAQUE machine
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-
-sudo modprobe overlay
-sudo modprobe br_netfilter
-
-# Configuration sysctl
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-
-sudo sysctl --system
-2.3 Désactiver swap
-bash
-# Sur CHAQUE machine
-sudo swapoff -a
-sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
-
-# Vérifier
-free -h
-⚙️ Étape 3 : Installer kubeadm, kubelet et kubectl
-3.1 Ajouter le repository Kubernetes
-bash
-# Sur CHAQUE machine
-sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
-
-echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-sudo apt update
-3.2 Installer les packages
-bash
-# Sur CHAQUE machine
-sudo apt install -y kubelet kubeadm kubectl
-
-# Bloquer les mises à jour automatiques
-sudo apt-mark hold kubelet kubeadm kubectl
-
-# Vérifier les versions
-kubeadm version
-kubectl version --client
-👑 Étape 4 : Initialiser le nœud maître
-4.1 Initialiser le cluster sur le master
-bash
-# SEULEMENT sur le master
-sudo kubeadm init \
-  --pod-network-cidr=10.244.0.0/16 \
-  --apiserver-advertise-address=192.168.1.100 \
-  --control-plane-endpoint=192.168.1.100
-
-# Notez la commande kubeadm join qui s'affiche à la fin
-# Elle ressemble à :
-# kubeadm join 192.168.1.100:6443 --token abcdef.1234567890abcdef \
-#   --discovery-token-ca-cert-hash sha256:...
-4.2 Configurer kubectl sur le master
-bash
-# SEULEMENT sur le master
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-# Tester
-kubectl get nodes
-🌐 Étape 5 : Installer un plugin réseau (CNI)
-5.1 Installer Flannel (recommandé pour les débutants)
-bash
-# SEULEMENT sur le master
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-
-# OU installer Calico (plus avancé)
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
-5.2 Vérifier l'installation du CNI
-bash
-# Attendre quelques minutes puis vérifier
-kubectl get pods --all-namespaces
-kubectl get nodes
-🔄 Étape 6 : Joindre les workers au cluster
-6.1 Générer un nouveau token (si nécessaire)
-bash
-# Sur le master, si le token a expiré
-kubeadm token create --print-join-command
-6.2 Joindre les workers
-bash
-# Sur CHAQUE worker, exécuter la commande join
-# (La commande affichée à l'étape 4.1)
-
-# Exemple :
-sudo kubeadm join 192.168.1.100:6443 \
-  --token abcdef.1234567890abcdef \
-  --discovery-token-ca-cert-hash sha256:...
-
-# Si vous avez perdu la commande, sur le master :
-kubeadm token create --print-join-command
-6.3 Vérifier que les nodes ont rejoint
-bash
-# Sur le master
-kubectl get nodes
-
-# Doit afficher quelque chose comme :
-# NAME     STATUS   ROLES           AGE   VERSION
-# master   Ready    control-plane   10m   v1.30.0
-# worker1  Ready    <none>          5m    v1.30.0
-# worker2  Ready    <none>          5m    v1.30.0
-✅ Étape 7 : Vérification du cluster
-7.1 Tests de base
-bash
-# Sur le master
-# Vérifier l'état du cluster
-kubectl cluster-info
-
-# Vérifier tous les composants système
-kubectl get pods --all-namespaces
-
-# Vérifier les nodes avec plus de détails
-kubectl get nodes -o wide
-
-# Vérifier les services système
-kubectl get svc -n kube-system
-7.2 Déployer une application test
-bash
-# Créer un namespace de test
-kubectl create namespace test-app
-
-# Déployer une application de test
-kubectl create deployment nginx-test --image=nginx -n test-app
-
-# Exposer le service
-kubectl expose deployment nginx-test --port=80 --type=NodePort -n test-app
-
-# Vérifier
-kubectl get all -n test-app
-🔧 Étape 8 : Configuration avancée (Optionnel)
-8.1 Configurer l'autocomplétion pour kubectl
-bash
-# Sur le master et sur votre machine locale si vous accédez à distance
-echo 'source <(kubectl completion bash)' >> ~/.bashrc
-source ~/.bashrc
-8.2 Installer le dashboard Kubernetes
-bash
-# Installer le dashboard
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
-
-# Créer un utilisateur admin
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: admin-user
-  namespace: kubernetes-dashboard
-EOF
-
-cat <<EOF | kubectl apply -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: admin-user
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  name: admin-user
-  namespace: kubernetes-dashboard
-EOF
-
-# Obtenir le token
-kubectl -n kubernetes-dashboard create token admin-user
-
-# Accéder au dashboard
-kubectl proxy
-# Puis accéder à : http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
-8.3 Configurer l'accès distant à kubectl
-bash
-# Copier le fichier config vers votre machine locale
-# Sur votre machine locale :
-mkdir -p ~/.kube
-scp utilisateur@master:/home/utilisateur/.kube/config ~/.kube/config
-
-# Remplacer l'adresse IP si nécessaire
-sed -i 's/192.168.1.100/<IP-PUBLIQUE-MASTER>/g' ~/.kube/config
-📊 Tableau récapitulatif des commandes par rôle
-Rôle	Sur Master	Sur Workers
-Préparation	Toutes les étapes 1.x	Toutes les étapes 1.x
-containerd	Étapes 2.x	Étapes 2.x
-kubeadm	Étapes 3.x	Étapes 3.x
-Initialisation	kubeadm init	-
-Configuration	Configurer kubectl	-
-CNI	Installer Flannel/Calico	-
-Join	-	kubeadm join
-Vérification	kubectl get nodes	-
-🚨 Dépannage des problèmes courants
-Problème : Les workers ne rejoignent pas
-bash
-# Vérifier la connectivité réseau
-ping 192.168.1.100  # Depuis les workers vers le master
-
-# Vérifier les ports ouverts sur le master
-sudo netstat -tlnp | grep 6443
-
-# Regénérer un token
-sudo kubeadm token create --print-join-command
-Problème : Les pods restent en "Pending"
-bash
-# Vérifier les événements
-kubectl get events --sort-by='.lastTimestamp'
-
-# Vérifier les ressources disponibles
-kubectl describe nodes
-
-# Vérifier le CNI
-kubectl get pods -n kube-system | grep -E "flannel|calico"
-Problème : kubelet ne démarre pas
+# Si échec, recréer le secret
+kubectl delete secret mysql-secret -n devops
+kubectl apply -f mysql-secret.yaml
+Problème 2 : Spring Boot ne démarre pas
 bash
 # Vérifier les logs
-sudo journalctl -u kubelet -f
+kubectl logs -n devops deployment/student-app-deployment
 
-# Réinitialiser
-sudo kubeadm reset
-sudo systemctl restart kubelet
-📝 Script d'automatisation complet
-Script pour le Master :
-bash
-#!/bin/bash
-# setup-master.sh
+# Vérifier les variables d'environnement
+kubectl exec -n devops $(kubectl get pods -n devops -l app=student-app -o jsonpath='{.items[0].metadata.name}') -- env | grep SPRING
 
-echo "=== Configuration du Master Kubernetes ==="
+# Vérifier le fichier de configuration monté
+kubectl exec -n devops $(kubectl get pods -n devops -l app=student-app -o jsonpath='{.items[0].metadata.name}') -- cat /app/config/application.properties
+Problème 3 : Port 8089 vs 8080
+Votre application.properties utilise server.port=8089, mais Kubernetes expose 8080. Solutions :
 
-# 1. Mise à jour
-sudo apt update && sudo apt upgrade -y
+Option A : Modifier le Dockerfile (recommandé)
 
-# 2. Installer containerd
-sudo apt install -y containerd
-sudo mkdir -p /etc/containerd
-sudo containerd config default | sudo tee /etc/containerd/config.toml
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-sudo systemctl restart containerd
+dockerfile
+# Modifier l'EXPOSE
+EXPOSE 8089
+Option B : Modifier les fichiers Kubernetes
 
-# 3. Désactiver swap
-sudo swapoff -a
-sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+yaml
+# Dans spring-deployment.yaml
+containerPort: 8089
 
-# 4. Installer kubeadm, kubelet, kubectl
-sudo apt install -y apt-transport-https curl
-curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update
-sudo apt install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+# Dans spring-service.yaml
+targetPort: 8089
+🎉 ÉTAPES FINALES POUR VOTRE TP
+Corriger le Dockerfile (ligne 12)
 
-# 5. Initialiser le cluster
-sudo kubeadm init \
-  --pod-network-cidr=10.244.0.0/16 \
-  --apiserver-advertise-address=$(hostname -I | awk '{print $1}')
+Créer les 8 fichiers YAML dans ~/tp-kubernetes-student/
 
-# 6. Configurer kubectl
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+Build l'image Docker avec Minikube
 
-# 7. Installer Flannel
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+Appliquer les configurations avec kubectl apply
 
-echo "=== Master configuré ==="
-echo "Commande pour joindre les workers:"
-kubeadm token create --print-join-command
-Script pour les Workers :
-bash
-#!/bin/bash
-# setup-worker.sh
-# Usage: ./setup-worker.sh <MASTER_IP> <JOIN_COMMAND>
+Vérifier avec le script verify-deployment.sh
 
-MASTER_IP=$1
-JOIN_CMD=$2
+Tester l'application : minikube service student-app-service --url
 
-echo "=== Configuration du Worker Kubernetes ==="
+Votre application Spring Boot "Student Management" est maintenant déployée sur Kubernetes avec :
 
-# 1-4. Mêmes étapes que le master
-# ... (copier les étapes 1-4 du script master)
+✅ Base de données MySQL persistante
 
-# 5. Joindre le cluster
-sudo $JOIN_CMD
+✅ Application Spring Boot scalable (2 réplicas)
 
-echo "=== Worker configuré et joint au cluster ==="
-🎉 Votre cluster est maintenant opérationnel !
-bash
-# Pour vérifier que tout fonctionne :
-kubectl get nodes -o wide
-kubectl cluster-info
-kubectl get pods --all-namespaces
+✅ Configuration externalisée (ConfigMap)
 
-# Pour déployer votre application Spring Boot comme dans le TP précédent :
-kubectl create namespace devops
-# Suivre les mêmes étapes YAML que pour Minikube
+✅ Secrets sécurisés
+
+✅ Health checks
+
+✅ Service exposé sur NodePort 30080
+
+Pour terminer votre TP, ajoutez :
+
+La configuration Jenkins (comme précédemment)
+
+Le pipeline CI/CD avec votre Jenkinsfile
