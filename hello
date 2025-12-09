@@ -282,3 +282,16 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 kubectl get nodes
 kubectl get pods --all-namespaces
 
+*****************************************************************************************************
+# Réinitialiser d'abord
+sudo kubeadm reset -f
+
+# Initialiser en ignorant l'erreur CRI
+sudo kubeadm init \
+  --pod-network-cidr=192.168.0.0/16 \
+  --ignore-preflight-errors=CRI
+
+# Configurer kubectl
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
