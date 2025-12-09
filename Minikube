@@ -1,0 +1,192 @@
+Installation Rapide de Minikube
+Étape 1 : Désinstaller kubeadm (si déjà installé)
+bash
+# Désinstaller seulement kubeadm/kubectl/kubelet
+sudo apt remove --purge kubelet kubeadm kubectl -y
+sudo apt autoremove -y
+
+# Nettoyer
+sudo rm -rf /etc/kubernetes ~/.kube
+Étape 2 : Installer Minikube
+bash
+# Télécharger Minikube
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+
+# Installer
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+# OU via package (Ubuntu/Debian)
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+sudo dpkg -i minikube_latest_amd64.deb
+Étape 3 : Installer kubectl
+bash
+# Télécharger kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+# Rendre exécutable et installer
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+
+# OU via apt
+sudo apt update
+sudo apt install -y kubectl
+Étape 4 : Vérifier les prérequis
+bash
+# Vérifier que Docker fonctionne
+docker --version
+sudo systemctl status docker
+
+# Vérifier l'espace disque (au moins 2GB libre)
+df -h
+Étape 5 : Démarrer Minikube
+bash
+# Démarrer avec Docker (le plus simple)
+minikube start --driver=docker
+
+# Si vous avez VirtualBox installé
+minikube start --driver=virtualbox
+
+# Avec plus de ressources (recommandé)
+minikube start --driver=docker --memory=4096 --cpus=2
+
+# Vérifier
+minikube status
+Configuration pour votre démonstration
+Étape 6 : Configurer l'environnement
+bash
+# Vérifier que tout fonctionne
+kubectl get nodes
+kubectl cluster-info
+
+# Activer les addons utiles
+minikube addons enable dashboard
+minikube addons enable metrics-server
+
+# Accéder au dashboard
+minikube dashboard
+Étape 7 : Tester avec vos fichiers YAML
+bash
+# Créer votre premier pod (comme dans votre démo)
+cat > first-pod.yaml <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: first-pod
+  labels:
+    app: non-application
+    environment: development
+spec:
+  containers:
+  - name: conteneur-api
+    image: hashicorp/http-echo
+    args:
+    - "-text=Hello Kubernetes ~~"
+    ports:
+    - containerPort: 5678
+EOF
+
+# Appliquer
+kubectl apply -f first-pod.yaml
+kubectl get pods
+Commandes Minikube essentielles pour votre démo
+bash
+# 1. Démarrer/Arrêter
+minikube start
+minikube stop
+minikube delete  # Supprimer le cluster
+
+# 2. Informations
+minikube status
+minikube ip      # Adresse IP du cluster
+minikube ssh     # SSH dans la VM Minikube
+
+# 3. Services NodePort (TRÈS IMPORTANT pour votre démo)
+minikube service list
+minikube service first-service --url  # Obtenir l'URL d'un service
+
+# 4. Pour exposer un service sur un port spécifique
+minikube tunnel  # Exécuter dans un terminal séparé
+Exemple complet de votre démonstration avec Minikube
+bash
+# 1. Démarrer Minikube
+minikube start --driver=docker --memory=4096 --cpus=2
+
+# 2. Créer le pod
+kubectl apply -f nodepod.yaml
+
+# 3. Créer le service
+kubectl apply -f service.yaml
+
+# 4. Obtenir l'URL pour tester
+minikube service first-service --url
+# Cela affichera: http://192.168.49.2:30880
+
+# 5. Tester avec curl
+curl http://192.168.49.2:30880
+
+# 6. Créer le ReplicaSet
+kubectl apply -f replicas.yaml
+kubectl get pods
+Avantages de Minikube pour votre cas :
+✅ Pas de conflit avec Docker - Minikube utilise Docker comme backend
+✅ Installation simple - Pas de problèmes CRI/complexes
+✅ Parfait pour démos - Tout fonctionne sur une seule machine
+✅ Facile à nettoyer - minikube delete et tout est parti
+✅ Dashboard intégré - Interface web pour voir les ressources
+✅ Exposition des services simple - Commande minikube service
+
+Si vous avez des erreurs avec Minikube :
+bash
+# Réinitialiser
+minikube delete
+minikube start --driver=docker
+
+# Augmenter les ressources
+minikube stop
+minikube start --driver=docker --memory=4096 --cpus=3 --disk-size=20g
+
+# Voir les logs
+minikube logs
+
+# Si problème de réseau
+minikube start --driver=docker --extra-config=kubelet.resolv-conf=/run/systemd/resolve/resolv.conf
+Raccourci : Script d'installation complet
+bash
+#!/bin/bash
+# install-minikube.sh
+
+echo "1. Installation de Minikube..."
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+echo "2. Installation de kubectl..."
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+
+echo "3. Démarrage de Minikube..."
+minikube start --driver=docker --memory=4096 --cpus=2
+
+echo "4. Vérification..."
+kubectl get nodes
+minikube status
+
+echo "Minikube est prêt pour votre démonstration!"
+Exécutez :
+
+bash
+chmod +x install-minikube.sh
+./install-minikube.sh
+Pour votre démo spécifique :
+Avec Minikube, toutes vos captures d'écran vont fonctionner :
+
+Pods : kubectl get pods
+
+Services : kubectl get svc + minikube service <nom> --url
+
+ReplicaSets : kubectl get replicasets
+
+Namespaces : kubectl get namespaces
+
+Conclusion : OUI, utilisez Minikube ! C'est la solution parfaite pour votre cas de démonstration sur Ubuntu dans VirtualBox.
+
