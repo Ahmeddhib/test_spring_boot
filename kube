@@ -1,3 +1,6 @@
+
+
+
 Étape 1 : Créer la structure de projet
 bash
 # Se connecter à Ubuntu
@@ -590,3 +593,117 @@ kubectl rollout undo deployment/spring-app -n devops
 
 # Port forwarding
 kubectl port-forward svc/spring-service 8080:8080 -n devops
+
+**********************************
+Étape 1 : Corriger d'abord le fichier YAML
+Ouvre le fichier mysql-pv-pvc.yaml et corrige-le :
+
+yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  namespace: devops
+spec:
+  capacity:
+    storage: 2Gi  # CORRECTION: "Gi" au lieu de "Gt" ou "dt"
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/mysql-student"
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: devops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi  # CORRECTION: "Gi" au lieu de "Gt" ou "dt"
+Sauvegarde le fichier après les corrections.
+
+Étape 2 : Vérifier et préparer le répertoire sur l'hôte
+bash
+# Créer le répertoire avec les bonnes permissions
+sudo mkdir -p /data/mysql-student
+sudo chmod 777 /data/mysql-student  # Permissions temporaires pour Kubernetes
+# OU mieux :
+sudo chown -R 999:999 /data/mysql-student  # UID/GID de MySQL (999)
+Étape 3 : Exécuter la séquence de suppression et recréation
+bash
+# 1. D'abord, arrêter le déploiement MySQL
+kubectl delete -f mysql-deployment.yaml
+
+# 2. Supprimer le PVC (dans le namespace devops)
+kubectl delete pvc mysql-pvc -n devops
+
+# 3. Supprimer le PV
+kubectl delete pv mysql-pv
+
+# 4. Vérifier que tout est supprimé
+kubectl get pv
+kubectl get pvc -n devops
+
+# 5. Appliquer la configuration corrigée
+kubectl apply -f mysql-pv-pvc.yaml
+
+# 6. Vérifier que PV et PVC sont créés
+kubectl get pv
+kubectl get pvc -n devops
+
+# 7. Recréer le déploiement MySQL
+kubectl apply -f mysql-deployment.yaml
+
+# 8. Vérifier que tout fonctionne
+kubectl get pods -n devops
+kubectl get pv,pvc -n devops
+Étape 4 : Vérification finale
+bash
+# Vérifier l'état des ressources
+kubectl get all,pv,pvc -n devops
+
+# Vérifier les logs de MySQL
+kubectl logs -n devops deployment/mysql-deployment
+
+# Vérifier que le pod MySQL est en cours d'exécution
+kubectl get pods -n devops -l app=mysql
+
+# Vérifier la connexion à MySQL
+kubectl exec -n devops deployment/mysql-deployment -- mysql --version
+Si tu rencontres des problèmes :
+Problème 1 : Le PVC reste en attente
+bash
+# Vérifier le statut du PVC
+kubectl describe pvc mysql-pvc -n devops
+
+# Si c'est lié au stockage, vérifier :
+kubectl describe pv mysql-pv
+Problème 2 : Permission denied sur le hostPath
+bash
+# Corriger les permissions
+sudo chmod -R 777 /data/mysql-student
+# OU
+sudo chown -R 999:999 /data/mysql-student
+Problème 3 : Le PV n'est pas lié au PVC
+bash
+# Supprimer et recréer dans le bon ordre
+kubectl delete pvc mysql-pvc -n devops
+kubectl delete pv mysql-pv
+sleep 5
+kubectl apply -f mysql-pv-pvc.yaml
+Commande tout-en-un (si tu veux aller vite) :
+bash
+# Séquence complète en une fois
+kubectl delete -f mysql-deployment.yaml && \
+kubectl delete pvc mysql-pvc -n devops && \
+kubectl delete pv mysql-pv && \
+sleep 3 && \
+kubectl apply -f mysql-pv-pvc.yaml && \
+kubectl apply -f mysql-deployment.yaml && \
+echo "Vérification..." && \
+sleep 5 && \
+kubectl get pods,pv,pvc -n devops
