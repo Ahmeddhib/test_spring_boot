@@ -670,3 +670,22 @@ spec:
   resources:
     requests:
       storage: 2Gi
+
+
+
+
+
+
+Option 1 : Supprimer et recréer les ressources (recommandé)
+bash
+# D'abord, supprimer le déploiement MySQL qui utilise le PVC
+kubectl delete -f mysql-deployment.yaml
+
+# Ensuite, supprimer le PVC et PV
+kubectl delete pvc mysql-pvc -n devops
+kubectl delete pv mysql-pv
+
+# Corriger d'abord le fichier YAML (corrige les erreurs)
+# Puis appliquer à nouveau
+kubectl apply -f mysql-pv-pvc.yaml
+kubectl apply -f mysql-deployment.yaml
