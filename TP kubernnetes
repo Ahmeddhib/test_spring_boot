@@ -1,0 +1,344 @@
+ÉTAPES COMPLÈTES DU TP
+Étape 0 : Préparation
+bash
+# Se positionner dans le bon répertoire
+cd ~/StudentsManagement-DevOps
+
+# Vérifier le contenu
+ls -la
+Étape 1 : Construire ton application Spring Boot
+bash
+# Construire le JAR avec Maven
+mvn clean package
+
+# Vérifier que le JAR est créé
+ls -la target/*.jar
+Étape 2 : Créer le Dockerfile
+bash
+# Créer le Dockerfile dans ton projet
+cat > Dockerfile << 'EOF'
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 8089
+ENTRYPOINT ["java", "-jar", "app.jar"]
+EOF
+
+# Vérifier
+cat Dockerfile
+Étape 3 : Activer Docker Minikube et construire l'image
+bash
+# Activer l'environnement Docker de Minikube
+eval $(minikube docker-env)
+
+# Vérifier que docker pointe vers Minikube
+docker info | grep -i "name"
+
+# Construire l'image Docker
+docker build -t student-management:1.0 .
+
+# Vérifier l'image
+docker images | grep student-management
+Étape 4 : Corriger tes fichiers YAML
+1. mysql-secret.yaml (sans mot de passe)
+bash
+cat > mysql-secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: devops
+type: Opaque
+stringData:
+  mysql-root-password: ""
+EOF
+2. mysql-pv-pvc.yaml (corrigé)
+bash
+cat > mysql-pv-pvc.yaml << 'EOF'
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  namespace: devops
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/mysql-student"
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: devops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+EOF
+3. mysql-deployment.yaml (sans mot de passe)
+bash
+cat > mysql-deployment.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        - name: MYSQL_DATABASE
+          value: "studentdb"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+EOF
+4. mysql-service.yaml
+bash
+cat > mysql-service.yaml << 'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: devops
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
+EOF
+5. application-secret.yaml (adapté à ton application.properties)
+bash
+cat > application-secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-service:3306/studentdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_DATASOURCE_PASSWORD: ""
+  SERVER_PORT: "8089"
+  SERVER_SERVLET_CONTEXT_PATH: "/student"
+EOF
+6. application-configmap.yaml
+bash
+cat > application-configmap.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-config
+  namespace: devops
+data:
+  SPRING_APPLICATION_NAME: "student-management"
+  SPRING_JPA_SHOW_SQL: "true"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_PROFILES_ACTIVE: "prod"
+EOF
+7. spring-deployment.yaml (IMPORTANT : image corrigée)
+bash
+cat > spring-deployment.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-app
+  template:
+    metadata:
+      labels:
+        app: spring-app
+    spec:
+      containers:
+      - name: spring-app
+        image: student-management:1.0  # CECI EST L'IMAGE QUE TU AS BUILDÉE
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8089
+        env:
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_URL
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_USERNAME
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_PASSWORD
+        - name: SERVER_PORT
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SERVER_PORT
+        - name: SERVER_SERVLET_CONTEXT_PATH
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SERVER_SERVLET_CONTEXT_PATH
+        - name: SPRING_APPLICATION_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_APPLICATION_NAME
+        - name: SPRING_JPA_SHOW_SQL
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_JPA_SHOW_SQL
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_PROFILES_ACTIVE
+EOF
+8. spring-service.yaml
+bash
+cat > spring-service.yaml << 'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-service
+  namespace: devops
+spec:
+  selector:
+    app: spring-app
+  ports:
+    - port: 8089
+      targetPort: 8089
+      nodePort: 30009
+  type: NodePort
+EOF
+Étape 5 : Créer le répertoire pour les données MySQL
+bash
+# Créer le répertoire avec permissions
+sudo mkdir -p /data/mysql-student
+sudo chmod 777 /data/mysql-student
+Étape 6 : Appliquer TOUT dans l'ordre
+bash
+# 1. Nettoyer l'ancien déploiement
+kubectl delete deployment spring-deployment -n devops 2>/dev/null || true
+kubectl delete deployment mysql-deployment -n devops 2>/dev/null || true
+kubectl delete pvc mysql-pvc -n devops 2>/dev/null || true
+kubectl delete pv mysql-pv 2>/dev/null || true
+sleep 5
+
+# 2. Créer le namespace s'il n'existe pas
+kubectl create namespace devops 2>/dev/null || true
+
+# 3. Appliquer dans l'ordre
+kubectl apply -f mysql-secret.yaml
+kubectl apply -f mysql-pv-pvc.yaml
+kubectl apply -f mysql-deployment.yaml
+kubectl apply -f mysql-service.yaml
+kubectl apply -f application-secret.yaml
+kubectl apply -f application-configmap.yaml
+kubectl apply -f spring-deployment.yaml
+kubectl apply -f spring-service.yaml
+
+# 4. Attendre
+echo "Attente de 60 secondes pour le démarrage..."
+sleep 60
+Étape 7 : Vérification
+bash
+# Vérifier tous les pods
+kubectl get all -n devops
+
+# Vérifier les logs MySQL
+kubectl logs -n devops deployment/mysql-deployment
+
+# Vérifier les logs Spring Boot
+kubectl logs -n devops deployment/spring-deployment
+
+# Tester la connexion MySQL
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -e "SHOW DATABASES;"
+
+# Obtenir l'URL de l'application
+minikube service spring-service -n devops --url
+Étape 8 : Si problème de pull d'image
+Si ImagePullBackOff persiste :
+
+bash
+# Vérifier l'image
+kubectl describe pod -n devops -l app=spring-app | grep -i image
+
+# Forcer le redéploiement
+kubectl rollout restart deployment spring-deployment -n devops
+
+# OU utiliser une image temporaire pour tester
+# Modifier spring-deployment.yaml :
+# image: nginx:alpine
+# Puis réappliquer
+STRUCTURE FINALE DE TON RÉPERTOIRE
+text
+~/StudentsManagement-DevOps/
+├── src/                         # Code source Spring Boot
+├── target/                      # JAR généré
+│   └── student-management.jar
+├── Dockerfile                   # Fichier Docker
+├── pom.xml                      # Fichier Maven
+├── mysql-secret.yaml
+├── mysql-pv-pvc.yaml
+├── mysql-deployment.yaml
+├── mysql-service.yaml
+├── application-secret.yaml
+├── application-configmap.yaml
+├── spring-deployment.yaml
+└── spring-service.yaml
+COMMANDES DE DÉPANNAGE
+bash
+# Voir les événements
+kubectl get events -n devops --sort-by='.lastTimestamp'
+
+# Décrire un pod
+kubectl describe pod -n devops <nom-pod>
+
+# Supprimer et redémarrer
+kubectl delete -f spring-deployment.yaml
+kubectl apply -f spring-deployment.yaml
+
+# Vérifier l'image dans Minikube
+eval $(minikube docker-env)
+docker images
