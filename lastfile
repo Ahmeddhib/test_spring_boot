@@ -1,0 +1,130 @@
+2. mysql-deployment.yaml - Autoriser mot de passe vide
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD  # IMPORTANT: permet mot de passe vide
+          value: "yes"
+        - name: MYSQL_ROOT_PASSWORD
+          value: ""  # Directement vide
+        - name: MYSQL_DATABASE
+          value: "studentdb"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+3. application-secret.yaml - Pour Spring Boot
+yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-service:3306/studentdb?createDatabaseIfNotExist=true&useSSL=false"
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_DATASOURCE_PASSWORD: ""  # Vide aussi
+  SERVER_PORT: "8089"
+  SERVER_SERVLET_CONTEXT_PATH: "/student"
+4. Appliquer les changements
+bash
+# 1. Mettre à jour le secret MySQL
+kubectl apply -f mysql-secret.yaml
+
+# 2. Mettre à jour le déploiement MySQL
+kubectl delete deployment mysql-deployment -n devops  # Supprimer l'ancien
+kubectl apply -f mysql-deployment.yaml               # Appliquer le nouveau
+
+# 3. Attendre que MySQL démarre
+sleep 30
+
+# 4. Tester la connexion sans mot de passe
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -e "SHOW DATABASES;"
+
+# 5. Mettre à jour les secrets Spring
+kubectl apply -f application-secret.yaml
+5. Alternative : Sans utiliser de secret du tout
+Si tu veux vraiment éviter les secrets, tu peux mettre les valeurs directement :
+
+yaml
+# mysql-deployment.yaml simplifié
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        - name: MYSQL_DATABASE
+          value: "studentdb"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+6. Pour tester rapidement maintenant :
+bash
+# Essayer cette commande (sans -p)
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -e "SHOW DATABASES;" --skip-password
+
+# OU
+kubectl exec -n devops deployment/mysql-deployment -- sh -c 'mysql -u root <<< "SHOW DATABASES;"'
+7. Si ça ne marche toujours pas, réinitialiser MySQL :
+bash
+# 1. Supprimer complètement
+kubectl delete deployment mysql-deployment -n devops
+kubectl delete pvc mysql-pvc -n devops
+kubectl delete pv mysql-pv
+
+# 2. Nettoyer le répertoire de données
+sudo rm -rf /data/mysql-student/*
+sudo mkdir -p /data/mysql-student
+sudo chmod 777 /data/mysql-student
+
+# 3. Recréer avec la nouvelle config
+kubectl apply -f mysql-pv-pvc.yaml
+kubectl apply -f mysql-deployment.yaml  # Avec la version sans mot de passe
+
+# 4. Tester
+sleep 40
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -e "SHOW DATABASES;"
