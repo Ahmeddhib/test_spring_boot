@@ -645,20 +645,28 @@ Tester l'application : minikube service student-app-service --url
 
 Votre application Spring Boot "Student Management" est maintenant déployée sur Kubernetes avec :
 
-✅ Base de données MySQL persistante
-
-✅ Application Spring Boot scalable (2 réplicas)
-
-✅ Configuration externalisée (ConfigMap)
-
-✅ Secrets sécurisés
-
-✅ Health checks
-
-✅ Service exposé sur NodePort 30080
-
-Pour terminer votre TP, ajoutez :
-
-La configuration Jenkins (comme précédemment)
-
-Le pipeline CI/CD avec votre Jenkinsfile
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  namespace: devops
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/mysql-student"
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: devops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
