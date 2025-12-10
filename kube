@@ -707,3 +707,249 @@ kubectl apply -f mysql-deployment.yaml && \
 echo "Vérification..." && \
 sleep 5 && \
 kubectl get pods,pv,pvc -n devops
+
+
+*****************************************************
+*****************************************************
+1. mysql-pv-pvc.yaml (Volume Persistant)
+yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  namespace: devops
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/mysql-student"
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: devops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+2. mysql-secret.yaml (Secrets MySQL)
+yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: devops
+type: Opaque
+data:
+  mysql-root-password: cm9vdDEyMw==  # root123
+  mysql-password: cm9vdDEyMw==       # root123
+3. mysql-deployment.yaml (Déploiement MySQL)
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-root-password
+        - name: MYSQL_DATABASE
+          value: springdb
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-password
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+4. mysql-service.yaml (Service MySQL)
+yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: devops
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
+5. application-configmap.yaml (ConfigMap pour Spring Boot)
+yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-config
+  namespace: devops
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: "com.mysql.cj.jdbc.Driver"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_JPA_SHOW_SQL: "true"
+6. application-secret.yaml (Secrets pour Spring Boot)
+yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-service:3306/springdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_DATASOURCE_PASSWORD: "root123"
+7. spring-deployment.yaml (Déploiement Spring Boot)
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-app
+  template:
+    metadata:
+      labels:
+        app: spring-app
+    spec:
+      containers:
+      - name: spring-app
+        image: ton-image-spring:latest  # Remplace par ton image
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_URL
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_USERNAME
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_PASSWORD
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_PROFILES_ACTIVE
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        - name: SPRING_JPA_SHOW_SQL
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_JPA_SHOW_SQL
+8. spring-service.yaml (Service Spring Boot)
+yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-service
+  namespace: devops
+spec:
+  selector:
+    app: spring-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30007  # Optionnel pour NodePort
+  type: NodePort  # Ou LoadBalancer selon ton environnement
+9. spring-ingress.yaml (Ingress pour Spring Boot - Optionnel)
+yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spring-ingress
+  namespace: devops
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: spring-app.local  # Remplace par ton domaine
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: spring-service
+            port:
+              number: 8080
+Ordre d'application recommandé :
+bash
+# 1. Créer le namespace si nécessaire
+kubectl create namespace devops
+
+# 2. Appliquer dans l'ordre
+kubectl apply -f mysql-secret.yaml
+kubectl apply -f mysql-pv-pvc.yaml
+kubectl apply -f mysql-deployment.yaml
+kubectl apply -f mysql-service.yaml
+kubectl apply -f application-secret.yaml
+kubectl apply -f application-configmap.yaml
+kubectl apply -f spring-deployment.yaml
+kubectl apply -f spring-service.yaml
+kubectl apply -f spring-ingress.yaml  # Optionnel
+Vérifications :
+bash
+# Vérifier l'état de tous les pods
+kubectl get all -n devops
+
+# Vérifier les logs
+kubectl logs -n devops deployment/mysql-deployment
+kubectl logs -n devops deployment/spring-deployment
+
+# Tester la connexion à MySQL
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -proot123 -e "SHOW DATABASES;"
+
+# Accéder à l'application Spring
+kubectl port-forward -n devops service/spring-service 8080:8080
+# Puis ouvrir http://localhost:8080
