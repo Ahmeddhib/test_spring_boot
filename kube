@@ -953,3 +953,204 @@ kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -proot123 -e
 # Accéder à l'application Spring
 kubectl port-forward -n devops service/spring-service 8080:8080
 # Puis ouvrir http://localhost:8080
+
+
+•&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+**************************************************************
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+1. application-secret.yaml - Mettre à jour avec tes configurations
+yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-service:3306/studentdb?createDatabaseIfNotExist=true&useSSL=false"
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_DATASOURCE_PASSWORD: ""  # Mot de passe vide
+  SERVER_PORT: "8089"
+  SERVER_SERVLET_CONTEXT_PATH: "/student"
+2. application-configmap.yaml - Mettre à jour
+yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-config
+  namespace: devops
+data:
+  SPRING_APPLICATION_NAME: "student-management"
+  SPRING_JPA_SHOW_SQL: "true"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_PROFILES_ACTIVE: "prod"
+3. mysql-deployment.yaml - Modifier pour créer studentdb
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-root-password
+        - name: MYSQL_DATABASE
+          value: "studentdb"  # Changé de "springdb" à "studentdb"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+4. spring-deployment.yaml - Mettre à jour avec les bonnes variables
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-app
+  template:
+    metadata:
+      labels:
+        app: spring-app
+    spec:
+      containers:
+      - name: spring-app
+        image: ton-image-spring:latest  # À remplacer par ton image
+        ports:
+        - containerPort: 8089  # Changé de 8080 à 8089
+        env:
+        # Variables de base de données
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_URL
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_USERNAME
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SPRING_DATASOURCE_PASSWORD
+        # Variables de serveur
+        - name: SERVER_PORT
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SERVER_PORT
+        - name: SERVER_SERVLET_CONTEXT_PATH
+          valueFrom:
+            secretKeyRef:
+              name: spring-secret
+              key: SERVER_SERVLET_CONTEXT_PATH
+        # Variables de ConfigMap
+        - name: SPRING_APPLICATION_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_APPLICATION_NAME
+        - name: SPRING_JPA_SHOW_SQL
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_JPA_SHOW_SQL
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: spring-config
+              key: SPRING_PROFILES_ACTIVE
+5. spring-service.yaml - Mettre à jour le port
+yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-service
+  namespace: devops
+spec:
+  selector:
+    app: spring-app
+  ports:
+    - port: 8089  # Changé de 8080 à 8089
+      targetPort: 8089
+      nodePort: 30009  # Optionnel, différent de 30007
+  type: NodePort
+6. mysql-secret.yaml - Garder tel quel (root sans mot de passe)
+yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: devops
+type: Opaque
+stringData:  # Utiliser stringData pour éviter l'encodage base64
+  mysql-root-password: ""  # Mot de passe vide
+7. Fichier Dockerfile pour ton application Spring (si tu en as besoin)
+dockerfile
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 8089
+ENTRYPOINT ["java", "-jar", "app.jar"]
+Ordre d'application mis à jour :
+bash
+# 1. Mettre à jour MySQL pour créer studentdb
+kubectl delete deployment mysql-deployment -n devops
+kubectl apply -f mysql-deployment.yaml
+
+# 2. Mettre à jour les secrets et configmaps
+kubectl apply -f application-secret.yaml
+kubectl apply -f application-configmap.yaml
+
+# 3. Construire ton image Spring Boot
+docker build -t student-management:1.0 .
+
+# 4. Mettre à jour spring-deployment.yaml avec le bon nom d'image
+# Remplacer "ton-image-spring:latest" par "student-management:1.0"
+
+# 5. Appliquer le déploiement Spring
+kubectl apply -f spring-deployment.yaml
+kubectl apply -f spring-service.yaml
+Vérifications :
+bash
+# Vérifier que MySQL a créé la base studentdb
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -e "SHOW DATABASES;"
+
+# Vérifier que Spring démarre sur le bon port
+kubectl logs -n devops deployment/spring-deployment
+
+# Accéder à l'application
+kubectl port-forward -n devops service/spring-service 8089:8089
+# Puis http://localhost:8089/student
