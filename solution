@@ -745,3 +745,207 @@ org.hibernate.exception.GenericJDBCException: unable to obtain isolated JDBC con
 	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.10.jar!/:6.2.10]
 	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:419) ~[spring-orm-6.2.10.jar!/:6.2.10]
 
+
+
+*//*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
+*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/**///*
+
+
+Solution : Configurer MySQL pour accepter les connexions sans mot de passe depuis n'importe quelle source
+Étape 1 : Se connecter à MySQL et créer un utilisateur sans mot de passe
+bash
+# 1. D'abord, se connecter à MySQL depuis l'intérieur du pod
+kubectl exec -n devops deployment/mysql-deployment -it -- bash
+
+# 2. Dans le shell du container MySQL, exécuter :
+mysql -u root << 'EOF'
+-- Créer un utilisateur root sans mot de passe pour toutes les IP
+CREATE USER 'root'@'%' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+EXIT;
+EOF
+
+# OU en une seule commande :
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -e "CREATE USER 'root'@'%' IDENTIFIED BY ''; GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+Étape 2 : Alternative - Créer un script d'initialisation MySQL
+Chemin : ~/tp-kubernetes-students/mysql-init.sql
+
+bash
+# Créer un fichier d'initialisation
+cat > mysql-init.sql << 'EOF'
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+CREATE DATABASE IF NOT EXISTS studentdb;
+EOF
+
+# Copier dans le pod MySQL
+kubectl cp mysql-init.sql devops/$(kubectl get pod -n devops -l app=mysql -o name | cut -d'/' -f2):/tmp/mysql-init.sql
+
+# Exécuter le script
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root < mysql-init.sql
+Étape 3 : Modifier le déploiement MySQL pour inclure l'initialisation
+Chemin : ~/tp-kubernetes-students/mysql-deployment.yaml
+
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        - name: MYSQL_DATABASE
+          value: "studentdb"
+        - name: MYSQL_ROOT_HOST
+          value: "%"  # Permet les connexions depuis n'importe où
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        - name: mysql-initdb
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+      - name: mysql-initdb
+        configMap:
+          name: mysql-init-config
+Étape 4 : Créer un ConfigMap pour l'initialisation
+Chemin : ~/tp-kubernetes-students/mysql-init-configmap.yaml
+
+bash
+cat > mysql-init-configmap.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init-config
+  namespace: devops
+data:
+  init.sql: |
+    CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '';
+    GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+    FLUSH PRIVILEGES;
+EOF
+
+# Appliquer
+kubectl apply -f mysql-init-configmap.yaml
+Étape 5 : Solution rapide - Redémarrer MySQL avec nouvelle configuration
+bash
+# 1. Supprimer le déploiement MySQL existant
+kubectl delete deployment mysql-deployment -n devops
+
+# 2. Appliquer cette version corrigée
+cat > mysql-deployment-fixed.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        - name: MYSQL_DATABASE
+          value: "studentdb"
+        - name: MYSQL_ROOT_HOST
+          value: "%"
+        command: ["sh", "-c"]
+        args:
+          - |
+            # Démarrer MySQL avec configuration pour accepter toutes les connexions
+            echo "[mysqld]" > /etc/mysql/conf.d/allhosts.cnf
+            echo "bind-address = 0.0.0.0" >> /etc/mysql/conf.d/allhosts.cnf
+            docker-entrypoint.sh mysqld
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+EOF
+
+kubectl apply -f mysql-deployment-fixed.yaml
+Étape 6 : Vérifier et tester
+bash
+# Attendre que MySQL redémarre
+sleep 30
+
+# Tester la connexion depuis Spring Boot
+kubectl exec -n devops deployment/mysql-deployment -- mysql -u root -h mysql-service -e "SELECT user, host FROM mysql.user;"
+
+# Vérifier les logs Spring Boot
+kubectl logs -n devops deployment/spring-deployment --tail=20
+
+# Vérifier l'URL de connexion utilisée par Spring
+kubectl exec -n devops deployment/spring-deployment -- env | grep DATASOURCE
+Étape 7 : Si problème persiste, utiliser un mot de passe simple
+Modifier application-secret.yaml :
+
+bash
+cat > application-secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-service:3306/studentdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_DATASOURCE_PASSWORD: "root123"  # Ajouter un mot de passe simple
+  SERVER_PORT: "8089"
+  SERVER_SERVLET_CONTEXT_PATH: "/student"
+EOF
+
+# Et modifier mysql-secret.yaml aussi
+cat > mysql-secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: devops
+type: Opaque
+stringData:
+  mysql-root-password: "root123"  # Même mot de passe
+EOF
+
+# Redémarrer tout
+kubectl apply -f mysql-secret.yaml
+kubectl apply -f application-secret.yaml
+kubectl rollout restart deployment mysql-deployment -n devops
+kubectl rollout restart deployment spring-deployment -n devops
+Recommandation : Commence par l'étape 1 (commande simple) pour créer l'utilisateur root@%, c'est la solution la plus rapide !
+
