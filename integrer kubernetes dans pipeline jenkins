@@ -1,0 +1,474 @@
+ÉTAPE 1 : CONFIGURER JENKINS POUR KUBERNETES
+1.1 Donner les droits à Jenkins pour utiliser kubectl
+bash
+# Chemin : Terminal de ta machine (pas dans Minikube)
+
+# 1. Copier la configuration kubeconfig vers Jenkins
+sudo mkdir -p /var/lib/jenkins/.kube
+sudo cp ~/.kube/config /var/lib/jenkins/.kube/
+
+# 2. Changer les propriétaires
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.kube
+
+# 3. Vérifier les permissions
+ls -la /var/lib/jenkins/.kube/
+
+# 4. Tester si Jenkins peut exécuter kubectl
+sudo -u jenkins kubectl get nodes
+1.2 Modifier le kubeconfig pour Jenkins
+bash
+# 1. Voir ta configuration actuelle
+cat ~/.kube/config
+
+# 2. Modifier le fichier pour Jenkins
+sudo nano /var/lib/jenkins/.kube/config
+
+# Chercher et remplacer :
+# /home/ahmed/.minikube → /var/lib/jenkins/.minikube
+# Toutes les occurrences !
+
+# Exemple :
+# certificate-authority: /var/lib/jenkins/.minikube/ca.crt
+# client-certificate: /var/lib/jenkins/.minikube/profiles/minikube/client.crt
+# client-key: /var/lib/jenkins/.minikube/profiles/minikube/client.key
+1.3 Copier les certificats Minikube vers Jenkins
+bash
+# 1. Créer le répertoire
+sudo mkdir -p /var/lib/jenkins/.minikube/profiles/minikube/
+
+# 2. Copier les certificats
+sudo cp -r ~/.minikube/ca.crt /var/lib/jenkins/.minikube/
+sudo cp -r ~/.minikube/profiles/minikube/client.crt /var/lib/jenkins/.minikube/profiles/minikube/
+sudo cp -r ~/.minikube/profiles/minikube/client.key /var/lib/jenkins/.minikube/profiles/minikube/
+
+# 3. Changer les permissions
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.minikube/
+sudo chmod 600 /var/lib/jenkins/.minikube/profiles/minikube/client.key
+1.4 Vérifier la configuration
+bash
+# Tester avec l'utilisateur Jenkins
+sudo -u jenkins kubectl get nodes
+sudo -u jenkins kubectl get pods -n devops
+ÉTAPE 2 : MODIFIER TON JENKINSFILE
+Chemin : ~/StudentsManagement-DevOps/Jenkinsfile
+
+groovy
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "ahmedwolf/spring-test3"
+        DOCKER_TAG = "latest"
+        K8S_NAMESPACE = "devops"
+        APP_NAME = "student-management"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([$class: 'GitSCM',
+                          branches: [[name: '*/main']],
+                          userRemoteConfigs: [[url: 'https://github.com/Ahmeddhib/StudentsManagement-DevOps.git']],
+                          extensions: [[$class: 'CloneOption', shallow: true, depth: 1, noTags: false, timeout: 10]]
+                ])
+            }
+        }
+
+        stage('Build Maven Project') {
+            steps {
+                sh 'mvn clean package -DskipTests -B'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh 'mvn sonar:sonar \
+                        -Dsonar.projectKey=student-management \
+                        -Dsonar.host.url=http://192.168.49.2:30010 \
+                        -Dsonar.login=admin \
+                        -Dsonar.password=sonar'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Utiliser l'environnement Docker de Minikube
+                    sh '''
+                        eval $(minikube docker-env)
+                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} student-management:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                            docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // 1. Mettre à jour l'image dans le déploiement Kubernetes
+                    sh '''
+                        kubectl set image deployment/spring-deployment \
+                        spring-app=student-management:latest \
+                        -n ${K8S_NAMESPACE}
+                    '''
+                    
+                    // 2. Vérifier le rollout
+                    sh '''
+                        kubectl rollout status deployment/spring-deployment \
+                        -n ${K8S_NAMESPACE} --timeout=300s
+                    '''
+                    
+                    // 3. Vérifier les pods
+                    sh '''
+                        kubectl get pods -n ${K8S_NAMESPACE}
+                        kubectl get svc -n ${K8S_NAMESPACE}
+                    '''
+                }
+            }
+        }
+
+        stage('Test Deployment') {
+            steps {
+                script {
+                    // Obtenir l'URL et tester
+                    sh '''
+                        APP_URL=$(minikube service spring-service -n ${K8S_NAMESPACE} --url)
+                        echo "Application URL: $APP_URL"
+                        curl -s $APP_URL/student/actuator/health | grep -q "UP" && echo "✅ Application is UP!" || echo "❌ Application is DOWN!"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline terminée ✅"
+            script {
+                // Nettoyage
+                sh 'docker logout'
+            }
+        }
+        success {
+            echo "✅ Déploiement réussi sur Kubernetes!"
+            slackSend(color: 'good', message: "Build ${BUILD_NUMBER} déployé avec succès!")
+        }
+        failure {
+            echo "❌ Échec du déploiement!"
+            slackSend(color: 'danger', message: "Build ${BUILD_NUMBER} a échoué!")
+        }
+    }
+}
+ÉTAPE 3 : CRÉER LES SCRIPT DE DÉMARRAGE
+3.1 Script pour démarrer tout l'environnement
+Chemin : ~/start-devops-env.sh
+
+bash
+#!/bin/bash
+echo "=== DÉMARRAGE ENVIRONNEMENT DEVOPS ==="
+
+# 1. Démarrer Minikube
+echo "1. Démarrage de Minikube..."
+minikube start --memory=4096 --cpus=2 --driver=docker
+
+# 2. Activer les addons
+echo "2. Activation des addons..."
+minikube addons enable ingress
+minikube addons enable dashboard
+
+# 3. Configurer Docker pour Minikube
+echo "3. Configuration Docker Minikube..."
+eval $(minikube docker-env)
+
+# 4. Démarrer SonarQube
+echo "4. Déploiement SonarQube..."
+cd ~/tp-kubernetes-students
+kubectl apply -f sonarqube-namespace.yaml 2>/dev/null || true
+kubectl apply -f sonarqube-deployment.yaml 2>/dev/null || true
+kubectl apply -f sonarqube-service.yaml 2>/dev/null || true
+
+# 5. Démarrer Jenkins
+echo "5. Démarrage Jenkins..."
+sudo systemctl start jenkins
+
+# 6. Démarrer Docker
+echo "6. Démarrage Docker..."
+sudo systemctl start docker
+
+# 7. Attendre
+echo "Attente de 30 secondes pour le démarrage..."
+sleep 30
+
+# 8. Afficher les URLs
+echo ""
+echo "=== URLS D'ACCÈS ==="
+echo "Minikube Dashboard: $(minikube dashboard --url 2>/dev/null || echo 'minikube dashboard')"
+echo "SonarQube: http://$(minikube ip):30010"
+echo "Jenkins: http://localhost:8080"
+echo "Application: http://$(minikube ip):30009/student"
+echo ""
+echo "=== COMMANDES UTILES ==="
+echo "Voir les logs: kubectl logs -n devops deployment/spring-deployment -f"
+echo "Voir les pods: kubectl get pods -A"
+echo "Ouvrir dashboard: minikube dashboard"
+echo "=== ENVIRONNEMENT PRÊT ==="
+3.2 Script pour arrêter tout
+Chemin : ~/stop-devops-env.sh
+
+bash
+#!/bin/bash
+echo "=== ARRÊT ENVIRONNEMENT DEVOPS ==="
+
+# 1. Arrêter Minikube
+echo "1. Arrêt de Minikube..."
+minikube stop
+
+# 2. Arrêter Jenkins
+echo "2. Arrêt Jenkins..."
+sudo systemctl stop jenkins
+
+# 3. Arrêter Docker (optionnel)
+# echo "3. Arrêt Docker..."
+# sudo systemctl stop docker
+
+echo "=== ENVIRONNEMENT ARRÊTÉ ==="
+3.3 Donner les permissions
+bash
+chmod +x ~/start-devops-env.sh
+chmod +x ~/stop-devops-env.sh
+ÉTAPE 4 : CONFIGURER JENKINS DANS L'INTERFACE WEB
+4.1 Accéder à Jenkins
+bash
+# URL : http://localhost:8080
+# Mot de passe admin :
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+4.2 Configurer dans Jenkins
+Installer les plugins :
+
+Kubernetes
+
+Docker Pipeline
+
+SonarQube Scanner
+
+Configurer Kubernetes :
+
+Gérer Jenkins → Configurer le système
+
+Section "Cloud" → Ajouter un cloud Kubernetes
+
+URL Kubernetes : https://kubernetes.default.svc
+
+Namespace : devops
+
+Configurer SonarQube :
+
+Gérer Jenkins → Configurer le système
+
+Section "SonarQube servers"
+
+Name : sonarqube
+
+Server URL : http://192.168.49.2:30010
+
+Token : (générer dans SonarQube : Admin → My Account → Security)
+
+Créer les credentials :
+
+DockerHub (ID: dockerhub)
+
+SonarQube Token (ID: sonarqube-token)
+
+ÉTAPE 5 : COMMANDES DE DÉMARRAGE RAPIDE
+Pour tout démarrer :
+bash
+# 1. Démarrer Minikube
+minikube start --memory=4096 --cpus=2
+
+# 2. Activer Docker Minikube
+eval $(minikube docker-env)
+
+# 3. Démarrer Jenkins
+sudo systemctl start jenkins
+
+# 4. Démarrer SonarQube sur K8s
+kubectl apply -f ~/tp-kubernetes-students/sonarqube-deployment.yaml
+kubectl apply -f ~/tp-kubernetes-students/sonarqube-service.yaml
+
+# 5. URLs
+echo "Jenkins: http://localhost:8080"
+echo "SonarQube: $(minikube service sonarqube-service -n sonarqube --url)"
+echo "App: $(minikube service spring-service -n devops --url)"
+Pour vérifier l'état :
+bash
+# Vérifier tout
+echo "=== ÉTAT DU SYSTÈME ==="
+minikube status
+sudo systemctl status jenkins | grep Active
+kubectl get pods -A
+echo ""
+echo "=== URLS ==="
+echo "Dashboard: minikube dashboard"
+echo "Jenkins: http://localhost:8080"
+ÉTAPE 6 : POUR TON RENDU DE TP
+Captures d'écran à faire :
+Jenkins Pipeline en cours d'exécution
+
+Build réussi avec les étapes Kubernetes
+
+SonarQube avec analyse de code
+
+Kubernetes Dashboard avec tes pods
+
+Application fonctionnelle dans le navigateur
+
+Commandes à montrer :
+bash
+# Montrer que Jenkins peut exécuter kubectl
+sudo -u jenkins kubectl get nodes
+sudo -u jenkins kubectl get pods -n devops
+
+# Montrer le pipeline
+cat ~/StudentsManagement-DevOps/Jenkinsfile
+
+# Montrer la configuration
+ls -la /var/lib/jenkins/.kube/
+Commence par l'Étape 1 pour configurer Jenkins avec kubectl, puis modifie ton Jenkinsfile !
+
+comment voir le status de docker work or np
+Voici comment vérifier si Docker fonctionne :
+
+COMMANDES POUR VÉRIFIER LE STATUS DE DOCKER
+1. Vérifier le service Docker
+bash
+# Vérifier si le service Docker est actif
+sudo systemctl status docker
+
+# OU
+service docker status
+
+# Résultat attendu :
+# ● docker.service - Docker Application Container Engine
+#    Loaded: loaded (/lib/systemd/system/docker.service; enabled; vendor preset: enabled)
+#    Active: active (running) since ...
+#    Main PID: ... (dockerd)
+#    Status: "running"
+2. Vérifier avec des commandes Docker
+bash
+# Test simple
+docker --version
+
+# Vérifier le daemon Docker
+docker info
+
+# Lancer un conteneur de test
+docker run hello-world
+
+# Voir les conteneurs en cours d'exécution
+docker ps
+
+# Voir toutes les images
+docker images
+3. Vérifier Docker avec Minikube
+bash
+# Si tu utilises Minikube, vérifie l'environnement
+eval $(minikube docker-env)
+
+# Puis tester
+docker ps
+docker images | grep student-management
+4. Script de vérification complet
+bash
+cat > check-docker.sh << 'EOF'
+#!/bin/bash
+echo "=== VÉRIFICATION DOCKER ==="
+
+echo "1. Service Docker:"
+sudo systemctl is-active docker && echo "✅ Docker service is ACTIVE" || echo "❌ Docker service is INACTIVE"
+
+echo ""
+echo "2. Version Docker:"
+docker --version 2>/dev/null && echo "✅ Docker CLI is installed" || echo "❌ Docker CLI not found"
+
+echo ""
+echo "3. Daemon Docker:"
+docker info 2>/dev/null | grep -i "server version" && echo "✅ Docker daemon is running" || echo "❌ Cannot connect to Docker daemon"
+
+echo ""
+echo "4. Test Hello-World:"
+docker run --rm hello-world 2>/dev/null | grep -i "hello from docker" && echo "✅ Docker can run containers" || echo "❌ Docker cannot run containers"
+
+echo ""
+echo "5. Conteneurs actifs:"
+docker ps 2>/dev/null | grep -v "CONTAINER ID" | wc -l | xargs echo "Conteneurs en cours: "
+
+echo ""
+echo "=== FIN DE VÉRIFICATION ==="
+EOF
+
+chmod +x check-docker.sh
+./check-docker.sh
+5. Dépannage si Docker ne fonctionne pas
+bash
+# Si Docker n'est pas actif :
+sudo systemctl start docker
+sudo systemctl enable docker  # Pour démarrer automatiquement au boot
+
+# Si tu as des problèmes de permissions :
+sudo usermod -aG docker $USER
+newgrp docker  # Ou déconnecte/reconnecte
+
+# Vérifier les logs en cas d'erreur
+sudo journalctl -u docker.service --no-pager -n 20
+6. Vérifier spécifiquement pour Kubernetes
+bash
+# Pour Minikube, vérifier l'environnement Docker
+minikube status
+eval $(minikube docker-env) 2>/dev/null && echo "✅ Minikube Docker env configured" || echo "❌ Minikube not running"
+
+# Vérifier les images dans Minikube
+eval $(minikube docker-env)
+docker images | head -5
+7. Commandes rapides de diagnostic
+bash
+# Tout vérifier en une commande
+echo "Docker:" $(docker --version 2>/dev/null || echo "NOT FOUND") && \
+echo "Service:" $(sudo systemctl is-active docker) && \
+echo "Containers:" $(docker ps -q | wc -l) && \
+echo "Minikube:" $(minikube status 2>/dev/null | grep "host:" | cut -d' ' -f2 || echo "NOT RUNNING")
+8. Vérifier dans Jenkins
+Si tu utilises Jenkins, ajoute cette étape dans ton pipeline :
+
+groovy
+stage('Check Docker') {
+    steps {
+        script {
+            sh '''
+                echo "=== Checking Docker ==="
+                docker --version
+                docker info
+                echo "Containers running:"
+                docker ps
+                echo "=== Docker Check Complete ==="
+            '''
+        }
+    }
+}
+Exécute d'abord sudo systemctl status docker pour voir l'état du service !
+
