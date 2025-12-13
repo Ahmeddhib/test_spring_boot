@@ -472,3 +472,42 @@ stage('Check Docker') {
 }
 Exécute d'abord sudo systemctl status docker pour voir l'état du service !
 
+***************************************************************
+//////////////////////////////////////////////////////////////
+
+Solution :
+Vérifiez le contenu du fichier config Kubernetes :
+
+bash
+cat ~/.kube/config
+Recherchez les chemins qui pointent vers /home/ahmed/.minikube/...
+
+Option 1 : Modifiez le fichier config pour Jenkins (recommandée) :
+
+Copiez les certificats de minikube vers le répertoire de Jenkins :
+
+bash
+sudo mkdir -p /var/lib/jenkins/.minikube/profiles/minikube
+sudo cp -r ~/.minikube/profiles/minikube/*.crt ~/.minikube/profiles/minikube/*.key /var/lib/jenkins/.minikube/profiles/minikube/
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.minikube
+Ensuite, modifiez le fichier config de Jenkins pour pointer vers les bons chemins :
+
+bash
+sudo nano /var/lib/jenkins/.kube/config
+Remplacez tous les chemins /home/ahmed/.minikube/... par /var/lib/jenkins/.minikube/...
+
+Option 2 : Donnez l'accès à Jenkins au répertoire de minikube (moins sécurisé) :
+
+bash
+sudo chmod -R 755 /home/ahmed/.minikube
+Ou ajoutez l'utilisateur jenkins au groupe d'ahmed (déconseillé en production).
+
+Option 3 : Utilisez minikube pour générer une nouvelle configuration :
+
+bash
+sudo -u jenkins minikube config view
+sudo -u jenkins minikube update-context
+Après correction, testez :
+
+bash
+sudo -u jenkins kubectl get nodes
