@@ -475,39 +475,93 @@ Exécute d'abord sudo systemctl status docker pour voir l'état du service !
 ***************************************************************
 //////////////////////////////////////////////////////////////
 
-Solution :
-Vérifiez le contenu du fichier config Kubernetes :
-
+Solution étape par étape :
+1. Copiez les certificats nécessaires vers le répertoire Jenkins :
 bash
-cat ~/.kube/config
-Recherchez les chemins qui pointent vers /home/ahmed/.minikube/...
-
-Option 1 : Modifiez le fichier config pour Jenkins (recommandée) :
-
-Copiez les certificats de minikube vers le répertoire de Jenkins :
-
-bash
+# Créez la structure de répertoire
+sudo mkdir -p /var/lib/jenkins/.minikube
 sudo mkdir -p /var/lib/jenkins/.minikube/profiles/minikube
-sudo cp -r ~/.minikube/profiles/minikube/*.crt ~/.minikube/profiles/minikube/*.key /var/lib/jenkins/.minikube/profiles/minikube/
-sudo chown -R jenkins:jenkins /var/lib/jenkins/.minikube
-Ensuite, modifiez le fichier config de Jenkins pour pointer vers les bons chemins :
 
+# Copiez le certificat d'autorité
+sudo cp /home/ahmed/.minikube/ca.crt /var/lib/jenkins/.minikube/
+
+# Copiez les certificats client
+sudo cp /home/ahmed/.minikube/profiles/minikube/client.crt /var/lib/jenkins/.minikube/profiles/minikube/
+sudo cp /home/ahmed/.minikube/profiles/minikube/client.key /var/lib/jenkins/.minikube/profiles/minikube/
+2. Modifiez les droits d'accès :
+bash
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.minikube
+sudo chmod 600 /var/lib/jenkins/.minikube/profiles/minikube/client.key
+sudo chmod 644 /var/lib/jenkins/.minikube/ca.crt
+sudo chmod 644 /var/lib/jenkins/.minikube/profiles/minikube/client.crt
+3. Modifiez le fichier config de Jenkins :
 bash
 sudo nano /var/lib/jenkins/.kube/config
-Remplacez tous les chemins /home/ahmed/.minikube/... par /var/lib/jenkins/.minikube/...
+Remplacez les chemins comme suit :
 
-Option 2 : Donnez l'accès à Jenkins au répertoire de minikube (moins sécurisé) :
+AVANT :
 
-bash
-sudo chmod -R 755 /home/ahmed/.minikube
-Ou ajoutez l'utilisateur jenkins au groupe d'ahmed (déconseillé en production).
+yaml
+certificate-authority: /home/ahmed/.minikube/ca.crt
+client-certificate: /home/ahmed/.minikube/profiles/minikube/client.crt
+client-key: /home/ahmed/.minikube/profiles/minikube/client.key
+APRÈS :
 
-Option 3 : Utilisez minikube pour générer une nouvelle configuration :
+yaml
+certificate-authority: /var/lib/jenkins/.minikube/ca.crt
+client-certificate: /var/lib/jenkins/.minikube/profiles/minikube/client.crt
+client-key: /var/lib/jenkins/.minikube/profiles/minikube/client.key
+Le fichier config complet devrait ressembler à :
 
-bash
-sudo -u jenkins minikube config view
-sudo -u jenkins minikube update-context
-Après correction, testez :
-
+yaml
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /var/lib/jenkins/.minikube/ca.crt
+    extensions:
+    - extension:
+        last-update: Sat, 13 Dec 2025 23:05:57 CET
+        provider: minikube.sigs.k8s.io
+        version: v1.37.0
+      name: cluster_info
+    server: https://192.168.49.2:8443
+  name: minikube
+contexts:
+- context:
+    cluster: minikube
+    extensions:
+    - extension:
+        last-update: Sat, 13 Dec 2025 23:05:57 CET
+        provider: minikube.sigs.k8s.io
+        version: v1.37.0
+      name: context_info
+    namespace: default
+    user: minikube
+  name: minikube
+current-context: minikube
+kind: Config
+preferences: {}
+users:
+- name: minikube
+  user:
+    client-certificate: /var/lib/jenkins/.minikube/profiles/minikube/client.crt
+    client-key: /var/lib/jenkins/.minikube/profiles/minikube/client.key
+4. Testez la configuration :
 bash
 sudo -u jenkins kubectl get nodes
+5. Vérifiez les permissions (si ça ne fonctionne toujours pas) :
+bash
+sudo ls -la /var/lib/jenkins/.kube/config
+sudo ls -la /var/lib/jenkins/.minikube/profiles/minikube/
+Solution alternative plus simple :
+Si vous voulez une solution plus rapide, vous pouvez utiliser la commande minikube pour générer une configuration avec des chemins relatifs :
+
+bash
+# Connectez-vous en tant que Jenkins
+sudo su - jenkins
+
+# Générer une nouvelle configuration
+minikube kubectl -- get nodes --alsologtostderr -v=1
+
+# Ou copiez directement depuis minikube
+minikube kubectl -- config view --minify --flatten > ~/.kube/config
