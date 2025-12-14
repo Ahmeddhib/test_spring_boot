@@ -795,3 +795,192 @@ JaCoCo pour mesurer l'exhaustivité des tests
 SonarQube pour assurer la qualité/maintenabilité
 
 Conseil : Commencez par ajouter JaCoCo à votre pom.xml, puis créez quelques tests JUnit pour voir la couverture augmenter !
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1. Vérifier et attendre le démarrage
+bash
+# Attendre quelques secondes (SonarQube prend 1-2 minutes pour démarrer)
+sleep 60
+
+# Vérifier les logs récents
+docker logs sonarqube --tail 20
+
+# Vérifier si le conteneur tourne
+docker ps | grep sonarqube
+
+# Vérifier si le port 9000 est en écoute
+sudo netstat -tlnp | grep 9000
+2. Vérifier la mémoire disponible
+bash
+# SonarQube nécessite au moins 2GB de RAM
+free -h
+
+# Vérifier la mémoire utilisée par Docker
+docker stats sonarqube --no-stream
+3. Redémarrer SonarQube avec plus de mémoire
+bash
+# Arrêter et supprimer l'instance actuelle
+docker stop sonarqube
+docker rm sonarqube
+
+# Redémarrer avec plus de mémoire (si disponible)
+docker run -d \
+  --name sonarqube \
+  -p 9000:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -e SONAR_WEB_JAVAOPTS="-Xmx1024m -Xms512m -XX:+UseG1GC" \
+  -v sonarqube_data:/opt/sonarqube/data \
+  -v sonarqube_logs:/opt/sonarqube/logs \
+  -v sonarqube_extensions:/opt/sonarqube/extensions \
+  sonarqube:lts-community
+4. Version allégée pour machines avec peu de RAM
+bash
+# Utiliser la version Community LTS allégée
+docker stop sonarqube 2>/dev/null || true
+docker rm sonarqube 2>/dev/null || true
+
+docker run -d \
+  --name sonarqube \
+  -p 9000:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -e SONAR_WEB_JAVAOPTS="-Xmx512m -Xms256m" \
+  -e SONAR_SEARCH_JAVAOPTS="-Xmx512m -Xms256m" \
+  -e SONAR_CE_JAVAOPTS="-Xmx512m -Xms256m" \
+  sonarqube:lts-community
+5. Script de démarrage avec vérification
+bash
+#!/bin/bash
+# start-sonarqube.sh
+
+echo "🚀 Démarrage de SonarQube..."
+
+# Arrêter si déjà en cours
+docker stop sonarqube 2>/dev/null || true
+docker rm sonarqube 2>/dev/null || true
+
+# Lancer SonarQube
+docker run -d \
+  --name sonarqube \
+  -p 9000:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -e SONAR_WEB_JAVAOPTS="-Xmx1024m -Xms512m" \
+  -v sonarqube_data:/opt/sonarqube/data \
+  -v sonarqube_logs:/opt/sonarqube/logs \
+  -v sonarqube_extensions:/opt/sonarqube/extensions \
+  sonarqube:lts-community
+
+echo "⏳ Attente du démarrage de SonarQube (peut prendre 1-2 minutes)..."
+
+# Attendre et vérifier
+for i in {1..30}; do
+    if curl -s http://localhost:9000 > /dev/null 2>&1; then
+        echo "✅ SonarQube démarré avec succès!"
+        echo "🌐 Accédez à: http://localhost:9000"
+        echo "🔑 Identifiants par défaut: admin/admin"
+        exit 0
+    fi
+    echo -n "."
+    sleep 5
+done
+
+echo ""
+echo "❌ SonarQube ne répond pas après 150 secondes"
+echo "📋 Affichage des logs..."
+
+docker logs sonarqube --tail 50
+
+echo ""
+echo "💡 Solutions possibles:"
+echo "1. Attendez encore quelques minutes"
+echo "2. Vérifiez la mémoire disponible: free -h"
+echo "3. Redémarrez avec: docker restart sonarqube"
+6. Solution alternative : Utiliser SonarQube en mode développement
+bash
+# Mode développement (démarrage plus rapide, moins de ressources)
+docker run -d \
+  --name sonarqube-dev \
+  -p 9000:9000 \
+  -e SONAR_WEB_JAVAOPTS="-Xmx512m -Xms256m" \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -e SONAR_FORCEAUTHENTICATION=false \
+  sonarqube:community
+7. Vérification étape par étape
+bash
+# Étape 1: Vérifier le conteneur
+docker ps -a | grep sonarqube
+
+# Étape 2: Voir les logs complets
+docker logs sonarqube
+
+# Étape 3: Vérifier les ressources
+docker stats sonarqube
+
+# Étape 4: Accéder aux logs d'Elasticsearch
+docker exec sonarqube cat /opt/sonarqube/logs/es.log
+
+# Étape 5: Redémarrer si bloqué
+docker restart sonarqube
+8. Solution rapide (tous problèmes)
+bash
+# Nettoyer complètement
+docker stop sonarqube 2>/dev/null || true
+docker rm sonarqube 2>/dev/null || true
+docker volume rm sonarqube_data sonarqube_logs sonarqube_extensions 2>/dev/null || true
+
+# Recréer les volumes
+docker volume create sonarqube_data
+docker volume create sonarqube_logs
+docker volume create sonarqube_extensions
+
+# Démarrer avec configuration minimale
+docker run -d \
+  --name sonarqube \
+  -p 9000:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -e SONAR_WEB_JAVAOPTS="-Xmx512m -Xms256m" \
+  sonarqube:lts-community
+
+# Attendre et vérifier
+echo "Attente du démarrage..."
+sleep 120
+curl -f http://localhost:9000 && echo "✅ SonarQube prêt!" || echo "❌ Encore des problèmes"
+9. Si vous avez peu de RAM sur la VM
+bash
+# 1. Augmenter la mémoire de la VM (si VirtualBox)
+#    - Arrêter la VM
+#    - Settings → System → Motherboard → Base Memory (4096 MB minimum)
+#    - Settings → System → Processor → Processors (2 minimum)
+
+# 2. Utiliser une alternative légère
+docker run -d \
+  --name sonarqube-light \
+  -p 9000:9000 \
+  -e SONAR_FORCEAUTHENTICATION=false \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -e SONAR_WEB_JAVAOPTS="-Xmx256m -Xms128m" \
+  sonarqube:9.9.1-community
+10. Commande de test finale
+bash
+# Exécutez cette commande complète
+docker stop sonarqube 2>/dev/null; docker rm sonarqube 2>/dev/null; \
+docker run -d --name sonarqube -p 9000:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -e SONAR_WEB_JAVAOPTS="-Xmx512m -Xms256m" \
+  sonarqube:lts-community && \
+echo "Attente 90 secondes..." && sleep 90 && \
+curl -s http://localhost:9000 > /dev/null && \
+echo "✅ SonarQube accessible sur http://localhost:9000" || \
+echo "❌ Problème, vérifiez: docker logs sonarqube"
