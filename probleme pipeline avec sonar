@@ -3,7 +3,7 @@ Jenkins
 
     webhootest
 
-#47
+#49
 
     Sortie de la console
 
@@ -44,11 +44,11 @@ using GIT_ASKPASS to set credentials
 Seen branch in repository origin/main
 Seen 1 remote branch
  > git show-ref --tags -d # timeout=10
-Checking out Revision e67b334388822dfcd594d685cb341227504cce37 (origin/main)
+Checking out Revision 76b1a0efc38bbf20329de9115fa872030ef3870d (origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f e67b334388822dfcd594d685cb341227504cce37 # timeout=10
-Commit message: "add file"
- > git rev-list --no-walk f9c06a956db21cc261db6d076c12901c0620e1ae # timeout=10
+ > git checkout -f 76b1a0efc38bbf20329de9115fa872030ef3870d # timeout=10
+Commit message: "update pipeline in jenkinsFile"
+ > git rev-list --no-walk 7acbe1c70a16fcdc8ec4f286d7f8a3bd6c3c7e34 # timeout=10
 [Pipeline] Start of Pipeline
 [Pipeline] node
 Running on Jenkins in /var/lib/jenkins/workspace/webhootest
@@ -69,10 +69,10 @@ using GIT_ASKPASS to set credentials
 Seen branch in repository origin/main
 Seen 1 remote branch
  > git show-ref --tags -d # timeout=10
-Checking out Revision e67b334388822dfcd594d685cb341227504cce37 (origin/main)
+Checking out Revision 76b1a0efc38bbf20329de9115fa872030ef3870d (origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f e67b334388822dfcd594d685cb341227504cce37 # timeout=10
-Commit message: "add file"
+ > git checkout -f 76b1a0efc38bbf20329de9115fa872030ef3870d # timeout=10
+Commit message: "update pipeline in jenkinsFile"
 [Pipeline] }
 [Pipeline] // stage
 [Pipeline] withEnv
@@ -93,10 +93,10 @@ Fetching upstream changes from https://github.com/Ahmeddhib/StudentsManagement-D
  > git --version # 'git version 2.25.1'
  > git fetch --tags --force --progress --depth=1 -- https://github.com/Ahmeddhib/StudentsManagement-DevOps.git +refs/heads/*:refs/remotes/origin/* # timeout=10
  > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
-Checking out Revision e67b334388822dfcd594d685cb341227504cce37 (refs/remotes/origin/main)
+Checking out Revision 76b1a0efc38bbf20329de9115fa872030ef3870d (refs/remotes/origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f e67b334388822dfcd594d685cb341227504cce37 # timeout=10
-Commit message: "add file"
+ > git checkout -f 76b1a0efc38bbf20329de9115fa872030ef3870d # timeout=10
+Commit message: "update pipeline in jenkinsFile"
 [Pipeline] }
 [Pipeline] // stage
 [Pipeline] stage
@@ -104,7 +104,6 @@ Commit message: "add file"
 [Pipeline] script
 [Pipeline] {
 [Pipeline] withSonarQubeEnv
-[Pipeline] // withSonarQubeEnv
 [Pipeline] }
 [Pipeline] // script
 [Pipeline] }
@@ -155,16 +154,14 @@ Removing login credentials for https://index.docker.io/v1/
 [Pipeline] echo
 📊 Résumé du build:
 [Pipeline] echo
-Build #47
+Build #49
 [Pipeline] echo
-Image: ahmedwolf/spring-test3:build-47
+Image: ahmedwolf/spring-test3:build-49
 [Pipeline] echo
 Build nécessaire: null
 [Pipeline] archiveArtifacts
 Archiving artifacts
 Enregistrement des empreintes numériques
-[Pipeline] echo
-🔄 Statut du build changé depuis la dernière exécution
 [Pipeline] echo
 ❌ Pipeline échouée !
 [Pipeline] }
