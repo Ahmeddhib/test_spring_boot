@@ -1,0 +1,797 @@
+Configuration SonarQube et Tests avec JaCoCo
+Voici les étapes complètes pour ajouter SonarQube et JaCoCo à votre projet Jenkins.
+
+Étape 1 : Installer SonarQube
+1.1. Installer SonarQube via Docker (recommandé)
+bash
+# Créer un volume pour les données
+docker volume create sonarqube_data
+docker volume create sonarqube_logs
+docker volume create sonarqube_extensions
+
+# Lancer SonarQube
+docker run -d \
+  --name sonarqube \
+  -p 9000:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  -v sonarqube_data:/opt/sonarqube/data \
+  -v sonarqube_logs:/opt/sonarqube/logs \
+  -v sonarqube_extensions:/opt/sonarqube/extensions \
+  sonarqube:lts-community
+
+# Vérifier que SonarQube tourne
+docker logs sonarqube
+curl http://localhost:9000
+1.2. Configuration initiale de SonarQube
+Ouvrir http://localhost:9000 (ou http://votre-ip:9000)
+
+Connexion : admin/admin
+
+Changer le mot de passe
+
+Créer un token :
+
+Administration → Security → Users → admin → Tokens
+
+Générer un token : "jenkins-token"
+
+Copier le token (vous en aurez besoin)
+
+Étape 2 : Configurer SonarQube dans Jenkins
+2.1. Installer les plugins Jenkins
+bash
+# Redémarrer Jenkins d'abord
+sudo systemctl restart jenkins
+Via l'interface Jenkins :
+
+Gérer Jenkins → Gérer les plugins
+
+Rechercher et installer :
+
+SonarQube Scanner for Jenkins
+
+JaCoCo Plugin
+
+Redémarrer Jenkins
+
+2.2. Configurer SonarQube Server dans Jenkins
+Gérer Jenkins → Configure System
+
+Section SonarQube servers :
+
+✅ Environment variables
+
+Nom : sonar-server
+
+URL : http://localhost:9000 (ou votre URL)
+
+Token : Coller le token généré précédemment
+
+2.3. Configurer SonarQube Scanner
+Gérer Jenkins → Outils globaux
+
+Section SonarQube Scanner :
+
+✅ SonarQube Scanner installations
+
+Nom : sonar-scanner
+
+Installation automatique : SonarScanner 5.0.1.3006
+
+Étape 3 : Configurer votre projet Maven
+3.1. Ajouter JaCoCo et Sonar dans pom.xml
+xml
+<!-- Ajouter dans pom.xml -->
+<properties>
+    <sonar.host.url>http://localhost:9000</sonar.host.url>
+    <sonar.login>${env.SONAR_TOKEN}</sonar.login>
+    <jacoco.version>0.8.12</jacoco.version>
+</properties>
+
+<dependencies>
+    <!-- Dépendances existantes... -->
+</dependencies>
+
+<build>
+    <plugins>
+        <!-- Plugin JaCoCo pour la couverture de code -->
+        <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <executions>
+                <execution>
+                    <id>prepare-agent</id>
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>report</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>report</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>jacoco-check</id>
+                    <goals>
+                        <goal>check</goal>
+                    </goals>
+                    <configuration>
+                        <rules>
+                            <rule>
+                                <element>CLASS</element>
+                                <limits>
+                                    <limit>
+                                        <counter>LINE</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>0.80</minimum> <!-- 80% de couverture minimum -->
+                                    </limit>
+                                </limits>
+                            </rule>
+                        </rules>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+
+        <!-- Plugin SonarQube -->
+        <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <version>3.11.0.3922</version>
+        </plugin>
+
+        <!-- Plugin Surefire pour exécuter les tests -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>3.5.0</version>
+            <configuration>
+                <includes>
+                    <include>**/*Test.java</include>
+                    <include>**/*Tests.java</include>
+                </includes>
+                <excludes>
+                    <exclude>**/*IntegrationTest.java</exclude>
+                </excludes>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+
+<profiles>
+    <profile>
+        <id>sonar</id>
+        <activation>
+            <activeByDefault>true</activeByDefault>
+        </activation>
+        <properties>
+            <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+            <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
+            <sonar.jacoco.reportPath>${project.build.directory}/jacoco.exec</sonar.jacoco.reportPath>
+            <sonar.language>java</sonar.language>
+            <sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
+            <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        </properties>
+    </profile>
+</profiles>
+3.2. Créer un fichier sonar-project.properties
+properties
+# sonar-project.properties
+sonar.projectKey=student-management
+sonar.projectName=Student Management System
+sonar.projectVersion=1.0
+
+sonar.sources=src/main/java
+sonar.tests=src/test/java
+sonar.java.binaries=target/classes
+sonar.java.libraries=target/**/*.jar
+
+sonar.coverage.exclusions=**/*Application.java,**/config/**/*,**/model/**/*,**/dto/**/*
+
+sonar.junit.reportsPath=target/surefire-reports
+sonar.jacoco.reportPath=target/jacoco.exec
+sonar.java.coveragePlugin=jacoco
+Étape 4 : Modifier votre Jenkinsfile
+groovy
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "ahmedwolf/spring-test3"
+        DOCKER_TAG = "build-${env.BUILD_NUMBER}"
+        DOCKER_LATEST = "latest"
+        
+        // Variables SonarQube (ajouter dans Jenkins Credentials)
+        SONAR_TOKEN = credentials('sonar-token')
+        SONAR_HOST_URL = "http://localhost:9000"
+    }
+
+    tools {
+        maven 'Maven-3.9.9'  // Configurer Maven dans Jenkins
+        jdk 'jdk17'          // Configurer JDK dans Jenkins
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Check for Code Changes') {
+            steps {
+                script {
+                    // Votre logique de détection de changements existante
+                    // ...
+                    echo "Build nécessaire ? ${env.BUILD_NEEDED}"
+                }
+            }
+        }
+
+        stage('Build & Test') {
+            when {
+                expression { env.BUILD_NEEDED == "true" }
+            }
+            steps {
+                sh '''
+                    echo "🔨 Compilation et tests..."
+                    mvn clean compile test-compile
+                '''
+            }
+        }
+
+        stage('Unit Tests & Coverage') {
+            when {
+                expression { env.BUILD_NEEDED == "true" }
+            }
+            steps {
+                sh '''
+                    echo "🧪 Exécution des tests unitaires..."
+                    mvn test -DskipITs
+                '''
+                
+                // Publier les résultats des tests JUnit
+                junit '**/target/surefire-reports/*.xml'
+                
+                // Publier le rapport JaCoCo
+                jacoco(
+                    execPattern: '**/target/jacoco.exec',
+                    classPattern: '**/target/classes',
+                    sourcePattern: '**/src/main/java',
+                    exclusionPattern: '**/*Test*,**/*test*'
+                )
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            when {
+                expression { env.BUILD_NEEDED == "true" }
+            }
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                        echo "📊 Analyse SonarQube..."
+                        mvn sonar:sonar \
+                            -Dsonar.projectKey=student-management \
+                            -Dsonar.projectName="Student Management System" \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_TOKEN} \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                            -Dsonar.junit.reportsPath=target/surefire-reports
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            when {
+                expression { env.BUILD_NEEDED == "true" }
+            }
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Package') {
+            when {
+                expression { env.BUILD_NEEDED == "true" }
+            }
+            steps {
+                sh '''
+                    echo "📦 Packaging..."
+                    mvn package -DskipTests
+                '''
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                expression { env.BUILD_NEEDED == "true" }
+            }
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:${DOCKER_LATEST}"
+                    echo "✅ Image Docker construite : ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub', 
+                        usernameVariable: 'DOCKER_USER', 
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            echo "Authentification sur Docker Hub..."
+                            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                            
+                            echo "Images disponibles localement :"
+                            docker images | grep ${DOCKER_IMAGE} || echo "Aucune image trouvée"
+                            
+                            if docker inspect ${DOCKER_IMAGE}:${DOCKER_TAG} > /dev/null 2>&1; then
+                                echo "Push de l'image avec tag ${DOCKER_TAG}..."
+                                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            else
+                                echo "⚠️ Image ${DOCKER_IMAGE}:${DOCKER_TAG} non trouvée localement"
+                            fi
+                            
+                            if [ "${BUILD_NEEDED}" = "true" ]; then
+                                echo "Push de l'image avec tag latest..."
+                                docker push ${DOCKER_IMAGE}:${DOCKER_LATEST}
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh '''
+                        echo "🔄 Déploiement sur Kubernetes..."
+                        
+                        if docker inspect ${DOCKER_IMAGE}:${DOCKER_TAG} > /dev/null 2>&1; then
+                            IMAGE_TO_DEPLOY="${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        else
+                            IMAGE_TO_DEPLOY="${DOCKER_IMAGE}:${DOCKER_LATEST}"
+                        fi
+                        
+                        echo "Image à déployer: \${IMAGE_TO_DEPLOY}"
+                        
+                        kubectl set image deployment/spring-test3 \
+                            spring-test3=\${IMAGE_TO_DEPLOY} --record
+                        
+                        kubectl rollout status deployment/spring-test3 --timeout=300s
+                        
+                        echo "✅ Déploiement Kubernetes terminé"
+                        
+                        kubectl get deployment spring-test3 -o wide
+                    '''
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            when {
+                expression { env.BUILD_NEEDED == "true" }
+            }
+            steps {
+                script {
+                    // Attendre que l'application soit prête
+                    sleep 30
+                    
+                    sh '''
+                        echo "🔗 Tests d'intégration..."
+                        
+                        # Récupérer l'URL du service
+                        SERVICE_URL=$(kubectl get service spring-test3 -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                        if [ -z "$SERVICE_URL" ]; then
+                            # Si pas d'IP externe, utiliser port-forward
+                            kubectl port-forward service/spring-test3 8080:8080 &
+                            PF_PID=$!
+                            SERVICE_URL="http://localhost:8080"
+                            sleep 5
+                        fi
+                        
+                        echo "Testing service at: $SERVICE_URL"
+                        
+                        # Tests API
+                        curl -f $SERVICE_URL/actuator/health || echo "Health check failed"
+                        curl -f $SERVICE_URL/api/students || echo "Students endpoint failed"
+                        
+                        # Tuer le port-forward si utilisé
+                        kill $PF_PID 2>/dev/null || true
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "🧹 Nettoyage..."
+            sh '''
+                docker logout || true
+                # Nettoyer les conteneurs et images
+                docker system prune -f || true
+            '''
+            
+            // Rapports de qualité
+            recordIssues(
+                tools: [
+                    java(), 
+                    mavenConsole(),
+                    junitParser(pattern: '**/target/surefire-reports/*.xml')
+                ]
+            )
+        }
+        
+        success {
+            echo "✅ Pipeline terminée avec succès !"
+            
+            // Notification si qualité OK
+            script {
+                if (env.BUILD_NEEDED == "true") {
+                    echo "📈 Rapport SonarQube disponible sur: ${SONAR_HOST_URL}/dashboard?id=student-management"
+                    echo "📊 Couverture de code JaCoCo disponible dans l'interface Jenkins"
+                }
+            }
+        }
+        
+        failure {
+            echo "❌ Pipeline échouée !"
+            // Logs d'erreur
+            sh '''
+                echo "=== Derniers logs Kubernetes ==="
+                kubectl logs deployment/spring-test3 --tail=50 || true
+                
+                echo "=== Statut des pods ==="
+                kubectl get pods || true
+                
+                echo "=== Événements ==="
+                kubectl get events --sort-by='.lastTimestamp' || true
+            '''
+        }
+        
+        unstable {
+            echo "⚠️ Pipeline instable (tests échoués ou qualité insuffisante)"
+        }
+    }
+}
+Étape 5 : Configurer les Quality Gates dans SonarQube
+Accéder à SonarQube : http://localhost:9000
+
+Créer un projet :
+
+Administration → Projects → Create Project
+
+Project Key : student-management
+
+Display Name : Student Management System
+
+Configurer Quality Gate :
+
+Quality Gates → Create
+
+Nom : Jenkins Quality Gate
+
+Conditions :
+
+Coverage on New Code > 80%
+
+Duplicated Lines on New Code < 3%
+
+Maintainability Rating A
+
+Reliability Rating A
+
+Security Rating A
+
+Appliquer au projet
+
+Étape 6 : Créer des tests (exemples)
+6.1. Test unitaire simple
+java
+// src/test/java/tn/esprit/StudentServiceTest.java
+package tn.esprit;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+@ExtendWith(MockitoExtension.class)
+public class StudentServiceTest {
+    
+    @Mock
+    private StudentRepository studentRepository;
+    
+    @InjectMocks
+    private StudentService studentService;
+    
+    @Test
+    public void testGetAllStudents() {
+        // Given
+        when(studentRepository.findAll()).thenReturn(Arrays.asList(
+            new Student(1L, "John", "Doe", "john@example.com"),
+            new Student(2L, "Jane", "Smith", "jane@example.com")
+        ));
+        
+        // When
+        List<Student> students = studentService.getAllStudents();
+        
+        // Then
+        assertEquals(2, students.size());
+        verify(studentRepository, times(1)).findAll();
+    }
+    
+    @Test
+    public void testCreateStudent() {
+        // Given
+        Student student = new Student(null, "John", "Doe", "john@example.com");
+        Student savedStudent = new Student(1L, "John", "Doe", "john@example.com");
+        
+        when(studentRepository.save(student)).thenReturn(savedStudent);
+        
+        // When
+        Student result = studentService.createStudent(student);
+        
+        // Then
+        assertNotNull(result.getId());
+        assertEquals("John", result.getFirstName());
+        verify(studentRepository, times(1)).save(student);
+    }
+}
+6.2. Test d'intégration
+java
+// src/test/java/tn/esprit/StudentControllerIntegrationTest.java
+package tn.esprit;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class StudentControllerIntegrationTest {
+    
+    @Autowired
+    private MockMvc mockMvc;
+    
+    @Test
+    public void testGetAllStudents() throws Exception {
+        mockMvc.perform(get("/api/students"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$").isArray());
+    }
+    
+    @Test
+    public void testCreateStudent() throws Exception {
+        String studentJson = "{\"firstName\":\"John\",\"lastName\":\"Doe\",\"email\":\"john@example.com\"}";
+        
+        mockMvc.perform(post("/api/students")
+                .contentType("application/json")
+                .content(studentJson))
+               .andExpect(status().isCreated())
+               .andExpect(jsonPath("$.firstName").value("John"));
+    }
+}
+Étape 7 : Scripts utilitaires
+7.1. Vérification locale
+bash
+#!/bin/bash
+# test-local.sh
+
+echo "1. Exécution des tests unitaires..."
+mvn test
+
+echo "2. Génération du rapport de couverture..."
+mvn jacoco:report
+
+echo "3. Analyse SonarQube locale..."
+mvn sonar:sonar \
+  -Dsonar.projectKey=student-management \
+  -Dsonar.host.url=http://localhost:9000 \
+  -Dsonar.login=your-token-here
+
+echo "4. Rapport disponible: target/site/jacoco/index.html"
+7.2. Cleanup script
+bash
+#!/bin/bash
+# cleanup.sh
+
+echo "Nettoyage des données de test..."
+docker stop sonarqube 2>/dev/null || true
+docker rm sonarqube 2>/dev/null || true
+
+echo "Suppression des rapports..."
+rm -rf target/site target/surefire-reports target/jacoco.exec
+
+echo "Nettoyage Kubernetes..."
+kubectl delete deployment spring-test3 2>/dev/null || true
+kubectl delete service spring-test3 2>/dev/null || true
+Résumé des bénéfices :
+✅ Qualité du code : Analyse statique avec SonarQube
+
+✅ Couverture de tests : JaCoCo mesure le % de code testé
+
+✅ Tests automatisés : JUnit pour tests unitaires et d'intégration
+
+✅ Quality Gate : Bloque le déploiement si qualité insuffisante
+
+✅ Rapports détaillés : Interface web pour analyser les résultats
+
+Prochaines étapes :
+
+Lancez SonarQube avec Docker
+
+Configurez Jenkins avec le plugin SonarQube
+
+Modifiez votre pom.xml avec les plugins JaCoCo/Sonar
+
+Créez quelques tests pour votre application
+
+Testez la nouvelle pipeline !
+
+Cela donnera une qualité professionnelle à votre pipeline CI/CD ! 🚀
+
+est ce que jacoco comme junit or no ??
+Non, JaCoCo n'est pas comme JUnit ! Ce sont des outils complémentaires mais avec des fonctions différentes.
+
+Différence claire :
+Outils	Fonction principale	Quand s'exécute	Résultat produit
+JUnit	Exécute les tests	Pendant mvn test	Rapport XML (TEST-*.xml) - Quels tests passent/échouent
+JaCoCo	Mesure la couverture	Pendant l'exécution des tests	Rapport binaire (jacoco.exec) + HTML - Combien de code est testé
+SonarQube	Analyse la qualité	Après les tests	Dashboard web - Analyse complète (bugs, vulnérabilités, dette technique)
+Analogie simple :
+JUnit = Professeur qui corrige les copies (✓ ou ✗)
+
+JaCoCo = Compteur qui mesure combien de matière a été couverte (%)
+
+SonarQube = Inspecteur qui vérifie la qualité globale
+
+Exemple concret :
+java
+// Classe à tester
+public class Calculator {
+    public int add(int a, int b) {
+        return a + b;  // Ligne 3
+    }
+    
+    public int multiply(int a, int b) {
+        return a * b;  // Ligne 7 (NON TESTÉE)
+    }
+}
+Test JUnit :
+
+java
+@Test
+public void testAdd() {
+    Calculator calc = new Calculator();
+    assertEquals(5, calc.add(2, 3));  // Teste seulement add()
+}
+Résultats :
+
+Outil	Résultat	Interprétation
+JUnit	✅ 1 test réussi, 0 échoué	"Les tests passent"
+JaCoCo	📊 50% de couverture (3/6 lignes)	"Seule la moitié du code est testée"
+SonarQube	⚠️ "Couverture insuffisante"	"Améliorer les tests"
+Dans votre pipeline :
+groovy
+stage('Tests') {
+    steps {
+        // 1. JUnit exécute les tests
+        sh 'mvn test'
+        
+        // 2. JUnit publie les résultats (quels tests passent)
+        junit '**/target/surefire-reports/*.xml'
+        
+        // 3. JaCoCo publie la couverture (% de code testé)
+        jacoco(
+            execPattern: '**/target/jacoco.exec',
+            classPattern: '**/target/classes'
+        )
+    }
+}
+Configuration Maven :
+xml
+<!-- pom.xml -->
+<plugins>
+    <!-- 1. JUnit s'exécute via Surefire -->
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.0</version>
+    </plugin>
+    
+    <!-- 2. JaCoCo instrumente le code pour mesurer la couverture -->
+    <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.12</version>
+        <executions>
+            <execution>
+                <id>prepare-agent</id>
+                <goals>
+                    <goal>prepare-agent</goal>  <!-- Instrumente le code -->
+                </goals>
+            </execution>
+            <execution>
+                <id>report</id>
+                <phase>test</phase>
+                <goals>
+                    <goal>report</goal>  <!-- Génère le rapport HTML -->
+                </goals>
+            </execution>
+        </executions>
+    </plugin>
+</plugins>
+Workflow complet :
+text
+[Code Java]
+     ↓
+[mvn test] → JUnit exécute les tests
+     ↓
+JaCoCo instrumente → mesure quelles lignes sont exécutées
+     ↓
+[jacoco.exec] → fichier binaire de couverture
+     ↓
+Rapport HTML → target/site/jacoco/index.html
+     ↓
+Jenkins Jacoco Plugin → affiche dans Jenkins
+     ↓
+SonarQube → analyse la qualité
+Visualisation dans Jenkins :
+Après un build, vous verrez :
+
+JUnit → Onglet "Test Results" :
+
+text
+Tests: 15 passed, 2 failed, 17 total
+JaCoCo → Onglet "Coverage Report" :
+
+text
+Instructions: 85% covered
+Branches: 72% covered
+Lines: 89% covered
+SonarQube → Lien vers dashboard :
+
+text
+Quality Gate: PASSED
+Bugs: 0
+Vulnerabilities: 2
+Coverage: 85%
+Pour résumer :
+JUnit = QUELS tests passent/échouent
+
+JaCoCo = COMBIEN de code est testé (%)
+
+SonarQube = QUALITÉ globale du code
+
+Vous avez besoin des trois pour une pipeline CI/CD complète :
+
+JUnit pour vérifier la correction fonctionnelle
+
+JaCoCo pour mesurer l'exhaustivité des tests
+
+SonarQube pour assurer la qualité/maintenabilité
+
+Conseil : Commencez par ajouter JaCoCo à votre pom.xml, puis créez quelques tests JUnit pour voir la couverture augmenter !
