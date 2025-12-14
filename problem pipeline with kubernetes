@@ -3,7 +3,7 @@ Jenkins
 
     webhootest
 
-#42
+#45
 
     Sortie de la console
 
@@ -23,7 +23,7 @@ Replay
 Pipeline Steps
 Workspaces
 Previous Build
-En coursEn coursEn coursEn coursEn coursEn coursEn échec
+En coursSuccès
 Sortie de la console
 Download
 Voir en texte brut
@@ -44,11 +44,11 @@ using GIT_ASKPASS to set credentials
 Seen branch in repository origin/main
 Seen 1 remote branch
  > git show-ref --tags -d # timeout=10
-Checking out Revision 84981887249ebfba84ff0db263055c0218a3dd52 (origin/main)
+Checking out Revision ebeb88c0674361c012bde5c0cf194c807d663339 (origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f 84981887249ebfba84ff0db263055c0218a3dd52 # timeout=10
+ > git checkout -f ebeb88c0674361c012bde5c0cf194c807d663339 # timeout=10
 Commit message: "add file"
- > git rev-list --no-walk 21448af1f01125c1abaf10f83e593731a0c7de0c # timeout=10
+ > git rev-list --no-walk 917413fa7a17c8a0e27494a355807b31fc3c2952 # timeout=10
 [Pipeline] Start of Pipeline
 [Pipeline] node
 Running on Jenkins in /var/lib/jenkins/workspace/webhootest
@@ -69,9 +69,9 @@ using GIT_ASKPASS to set credentials
 Seen branch in repository origin/main
 Seen 1 remote branch
  > git show-ref --tags -d # timeout=10
-Checking out Revision 84981887249ebfba84ff0db263055c0218a3dd52 (origin/main)
+Checking out Revision ebeb88c0674361c012bde5c0cf194c807d663339 (origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f 84981887249ebfba84ff0db263055c0218a3dd52 # timeout=10
+ > git checkout -f ebeb88c0674361c012bde5c0cf194c807d663339 # timeout=10
 Commit message: "add file"
 [Pipeline] }
 [Pipeline] // stage
@@ -93,9 +93,9 @@ Fetching upstream changes from https://github.com/Ahmeddhib/StudentsManagement-D
  > git --version # 'git version 2.25.1'
  > git fetch --tags --force --progress --depth=1 -- https://github.com/Ahmeddhib/StudentsManagement-DevOps.git +refs/heads/*:refs/remotes/origin/* # timeout=10
  > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
-Checking out Revision 84981887249ebfba84ff0db263055c0218a3dd52 (refs/remotes/origin/main)
+Checking out Revision ebeb88c0674361c012bde5c0cf194c807d663339 (refs/remotes/origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f 84981887249ebfba84ff0db263055c0218a3dd52 # timeout=10
+ > git checkout -f ebeb88c0674361c012bde5c0cf194c807d663339 # timeout=10
 Commit message: "add file"
 [Pipeline] }
 [Pipeline] // stage
@@ -107,15 +107,15 @@ Commit message: "add file"
 + find . -type f -name *.java -o -name *.xml -o -name *.properties -o -name *.yml -o -name *.yaml -o -name Dockerfile -o -name pom.xml -o -name Jenkinsfile
 + sort
 + xargs cat
-+ sha256sum
 + awk {print $1}
++ sha256sum
 + cat current_code_hash.txt
-+ echo Hash calculé : 1e67a496d77a32bf2cbf7a4655249a1e9f3c613ed8e7076475f529c3abe4b236
-Hash calculé : 1e67a496d77a32bf2cbf7a4655249a1e9f3c613ed8e7076475f529c3abe4b236
++ echo Hash calculé : 0c1bf8d24b41577fe4b31df32f331baea440902dd0d9b5daf3c90605b373ae20
+Hash calculé : 0c1bf8d24b41577fe4b31df32f331baea440902dd0d9b5daf3c90605b373ae20
 [Pipeline] readFile
 [Pipeline] readFile
 [Pipeline] echo
-Hash précédent trouvé : 1e67a496d77a32bf2cbf7a4655249a1e9f3c613ed8e7076475f529c3abe4b236
+Hash précédent trouvé : 0c1bf8d24b41577fe4b31df32f331baea440902dd0d9b5daf3c90605b373ae20
 [Pipeline] echo
 ✅ Aucun changement dans le code
 [Pipeline] writeFile
@@ -160,12 +160,16 @@ Images disponibles localement :
 + docker images
 + grep ahmedwolf/spring-test3
 ahmedwolf/spring-test3        build-39   df852c48e4c4   11 days ago    356MB
+ahmedwolf/spring-test3        build-43   df852c48e4c4   11 days ago    356MB
 ahmedwolf/spring-test3        latest     df852c48e4c4   11 days ago    356MB
-+ echo Push de l'image avec tag build-42...
-Push de l'image avec tag build-42...
-+ docker push ahmedwolf/spring-test3:build-42
-The push refers to repository [docker.io/ahmedwolf/spring-test3]
-tag does not exist: ahmedwolf/spring-test3:build-42
++ docker inspect ahmedwolf/spring-test3:build-45
++ echo ⚠️ Image ahmedwolf/spring-test3:build-45 non trouvée localement
+⚠️ Image ahmedwolf/spring-test3:build-45 non trouvée localement
++ echo → Skip du push pour ce tag
+→ Skip du push pour ce tag
++ [ false = true ]
++ echo Skip push latest (aucun changement détecté)
+Skip push latest (aucun changement détecté)
 [Pipeline] }
 [Pipeline] // withCredentials
 [Pipeline] }
@@ -174,14 +178,34 @@ tag does not exist: ahmedwolf/spring-test3:build-42
 [Pipeline] // stage
 [Pipeline] stage
 [Pipeline] { (Deploy to Kubernetes)
-Stage "Deploy to Kubernetes" skipped due to earlier failure(s)
-[Pipeline] getContext
+[Pipeline] script
+[Pipeline] {
+[Pipeline] sh
++ echo 🔄 Déploiement sur Kubernetes...
+🔄 Déploiement sur Kubernetes...
++ docker inspect ahmedwolf/spring-test3:build-45
++ docker inspect ahmedwolf/spring-test3:latest
++ echo Utilisation de l'image latest locale: ahmedwolf/spring-test3:latest
+Utilisation de l'image latest locale: ahmedwolf/spring-test3:latest
++ IMAGE_TO_DEPLOY=ahmedwolf/spring-test3:latest
++ echo Image à déployer: ahmedwolf/spring-test3:latest
+Image à déployer: ahmedwolf/spring-test3:latest
++ kubectl get deployment spring-test3
++ echo Mise à jour du déploiement existant...
+Mise à jour du déploiement existant...
++ kubectl set image deployment/spring-test3 spring-test3=ahmedwolf/spring-test3:latest --record
+Flag --record has been deprecated, --record will be removed in the future
++ kubectl rollout status deployment/spring-test3 --timeout=300s
+deployment "spring-test3" successfully rolled out
++ echo ✅ Déploiement Kubernetes terminé
+✅ Déploiement Kubernetes terminé
++ echo --- Informations du déploiement ---
+--- Informations du déploiement ---
++ kubectl get deployment spring-test3 -o wide
+NAME           READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS     IMAGES                          SELECTOR
+spring-test3   1/1     1            1           3m58s   spring-test3   ahmedwolf/spring-test3:latest   app=spring-test3
 [Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Verify Deployment)
-Stage "Verify Deployment" skipped due to earlier failure(s)
-[Pipeline] getContext
+[Pipeline] // script
 [Pipeline] }
 [Pipeline] // stage
 [Pipeline] stage
@@ -191,28 +215,23 @@ Stage "Verify Deployment" skipped due to earlier failure(s)
 [Pipeline] sh
 + docker logout
 Removing login credentials for https://index.docker.io/v1/
-+ docker image prune -f
-Total reclaimed space: 0B
 [Pipeline] echo
 📊 Résumé du build:
 [Pipeline] echo
-Build #42
+Build #45
 [Pipeline] echo
-Image: ahmedwolf/spring-test3:build-42
+Image: ahmedwolf/spring-test3:build-45
 [Pipeline] echo
 Build nécessaire: false
 [Pipeline] archiveArtifacts
 Archiving artifacts
 Enregistrement des empreintes numériques
 [Pipeline] echo
-🔄 Statut du build changé depuis la dernière exécution
+✅ Pipeline terminée avec succès !
 [Pipeline] echo
-❌ Pipeline échouée !
-[Pipeline] emailext
-Sending email to: ahmeddhib20@gmail.com
-Connection error sending email, retrying once more in 10 seconds...
-Connection error sending email, retrying once more in 10 seconds...
-Failed after second try sending email
+📦 Image Docker: ahmedwolf/spring-test3:build-45
+[Pipeline] echo
+🚀 Déployé sur Kubernetes
 [Pipeline] }
 [Pipeline] // stage
 [Pipeline] }
@@ -222,7 +241,6 @@ Failed after second try sending email
 [Pipeline] }
 [Pipeline] // node
 [Pipeline] End of Pipeline
-ERROR: script returned exit code 1
-Finished: FAILURE
+Finished: SUCCESS
 
 REST API
