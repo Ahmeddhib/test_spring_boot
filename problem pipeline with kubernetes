@@ -3,7 +3,7 @@ Jenkins
 
     webhootest
 
-#34
+#42
 
     Sortie de la console
 
@@ -23,7 +23,7 @@ Replay
 Pipeline Steps
 Workspaces
 Previous Build
-En coursSuccès
+En coursEn coursEn coursEn coursEn coursEn coursEn échec
 Sortie de la console
 Download
 Voir en texte brut
@@ -44,11 +44,11 @@ using GIT_ASKPASS to set credentials
 Seen branch in repository origin/main
 Seen 1 remote branch
  > git show-ref --tags -d # timeout=10
-Checking out Revision bb17d3bed0128770039ef3feab4809632ca1eaf1 (origin/main)
+Checking out Revision 84981887249ebfba84ff0db263055c0218a3dd52 (origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f bb17d3bed0128770039ef3feab4809632ca1eaf1 # timeout=10
+ > git checkout -f 84981887249ebfba84ff0db263055c0218a3dd52 # timeout=10
 Commit message: "add file"
- > git rev-list --no-walk 4523db9b14e1c7d781e34a7b1b90db41b731b826 # timeout=10
+ > git rev-list --no-walk 21448af1f01125c1abaf10f83e593731a0c7de0c # timeout=10
 [Pipeline] Start of Pipeline
 [Pipeline] node
 Running on Jenkins in /var/lib/jenkins/workspace/webhootest
@@ -69,9 +69,9 @@ using GIT_ASKPASS to set credentials
 Seen branch in repository origin/main
 Seen 1 remote branch
  > git show-ref --tags -d # timeout=10
-Checking out Revision bb17d3bed0128770039ef3feab4809632ca1eaf1 (origin/main)
+Checking out Revision 84981887249ebfba84ff0db263055c0218a3dd52 (origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f bb17d3bed0128770039ef3feab4809632ca1eaf1 # timeout=10
+ > git checkout -f 84981887249ebfba84ff0db263055c0218a3dd52 # timeout=10
 Commit message: "add file"
 [Pipeline] }
 [Pipeline] // stage
@@ -93,20 +93,34 @@ Fetching upstream changes from https://github.com/Ahmeddhib/StudentsManagement-D
  > git --version # 'git version 2.25.1'
  > git fetch --tags --force --progress --depth=1 -- https://github.com/Ahmeddhib/StudentsManagement-DevOps.git +refs/heads/*:refs/remotes/origin/* # timeout=10
  > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
-Checking out Revision bb17d3bed0128770039ef3feab4809632ca1eaf1 (refs/remotes/origin/main)
+Checking out Revision 84981887249ebfba84ff0db263055c0218a3dd52 (refs/remotes/origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f bb17d3bed0128770039ef3feab4809632ca1eaf1 # timeout=10
+ > git checkout -f 84981887249ebfba84ff0db263055c0218a3dd52 # timeout=10
 Commit message: "add file"
 [Pipeline] }
 [Pipeline] // stage
 [Pipeline] stage
-[Pipeline] { (Check Docker Image)
+[Pipeline] { (Check for Code Changes)
 [Pipeline] script
 [Pipeline] {
 [Pipeline] sh
-+ docker image inspect ahmedwolf/spring-test3:latest
++ find . -type f -name *.java -o -name *.xml -o -name *.properties -o -name *.yml -o -name *.yaml -o -name Dockerfile -o -name pom.xml -o -name Jenkinsfile
++ sort
++ xargs cat
++ sha256sum
++ awk {print $1}
++ cat current_code_hash.txt
++ echo Hash calculé : 1e67a496d77a32bf2cbf7a4655249a1e9f3c613ed8e7076475f529c3abe4b236
+Hash calculé : 1e67a496d77a32bf2cbf7a4655249a1e9f3c613ed8e7076475f529c3abe4b236
+[Pipeline] readFile
+[Pipeline] readFile
 [Pipeline] echo
-Build Maven needed? false
+Hash précédent trouvé : 1e67a496d77a32bf2cbf7a4655249a1e9f3c613ed8e7076475f529c3abe4b236
+[Pipeline] echo
+✅ Aucun changement dans le code
+[Pipeline] writeFile
+[Pipeline] echo
+Build nécessaire ? false
 [Pipeline] }
 [Pipeline] // script
 [Pipeline] }
@@ -131,20 +145,27 @@ Stage "Build Docker Image" skipped due to when conditional
 Masking supported pattern matches of $DOCKER_PASS
 [Pipeline] {
 [Pipeline] sh
++ echo Authentification sur Docker Hub...
+Authentification sur Docker Hub...
 + echo ****
 + docker login -u ahmedwolf --password-stdin
+
+WARNING! Your credentials are stored unencrypted in '/var/lib/jenkins/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
 Login Succeeded
-+ docker push ahmedwolf/spring-test3:latest
++ echo Images disponibles localement :
+Images disponibles localement :
++ docker images
++ grep ahmedwolf/spring-test3
+ahmedwolf/spring-test3        build-39   df852c48e4c4   11 days ago    356MB
+ahmedwolf/spring-test3        latest     df852c48e4c4   11 days ago    356MB
++ echo Push de l'image avec tag build-42...
+Push de l'image avec tag build-42...
++ docker push ahmedwolf/spring-test3:build-42
 The push refers to repository [docker.io/ahmedwolf/spring-test3]
-f918a68ae5f0: Preparing
-c49a54d9c412: Preparing
-edbf455418ea: Preparing
-256f393e029f: Preparing
-f918a68ae5f0: Layer already exists
-256f393e029f: Layer already exists
-c49a54d9c412: Layer already exists
-edbf455418ea: Layer already exists
-latest: digest: sha256:9c26656e92706fb6d8b474237c0bbc4ea5a19a9efedbc208a22692fe274289c7 size: 1159
+tag does not exist: ahmedwolf/spring-test3:build-42
 [Pipeline] }
 [Pipeline] // withCredentials
 [Pipeline] }
@@ -152,9 +173,46 @@ latest: digest: sha256:9c26656e92706fb6d8b474237c0bbc4ea5a19a9efedbc208a22692fe2
 [Pipeline] }
 [Pipeline] // stage
 [Pipeline] stage
+[Pipeline] { (Deploy to Kubernetes)
+Stage "Deploy to Kubernetes" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Verify Deployment)
+Stage "Verify Deployment" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
 [Pipeline] { (Declarative: Post Actions)
 [Pipeline] echo
-Pipeline terminée ✅
+🧹 Nettoyage...
+[Pipeline] sh
++ docker logout
+Removing login credentials for https://index.docker.io/v1/
++ docker image prune -f
+Total reclaimed space: 0B
+[Pipeline] echo
+📊 Résumé du build:
+[Pipeline] echo
+Build #42
+[Pipeline] echo
+Image: ahmedwolf/spring-test3:build-42
+[Pipeline] echo
+Build nécessaire: false
+[Pipeline] archiveArtifacts
+Archiving artifacts
+Enregistrement des empreintes numériques
+[Pipeline] echo
+🔄 Statut du build changé depuis la dernière exécution
+[Pipeline] echo
+❌ Pipeline échouée !
+[Pipeline] emailext
+Sending email to: ahmeddhib20@gmail.com
+Connection error sending email, retrying once more in 10 seconds...
+Connection error sending email, retrying once more in 10 seconds...
+Failed after second try sending email
 [Pipeline] }
 [Pipeline] // stage
 [Pipeline] }
@@ -164,6 +222,7 @@ Pipeline terminée ✅
 [Pipeline] }
 [Pipeline] // node
 [Pipeline] End of Pipeline
-Finished: SUCCESS
+ERROR: script returned exit code 1
+Finished: FAILURE
 
 REST API
