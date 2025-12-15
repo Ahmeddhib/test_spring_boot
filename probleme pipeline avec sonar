@@ -3,7 +3,7 @@ Jenkins
 
     webhootest
 
-#54
+#55
 
     Sortie de la console
 
@@ -13,17 +13,16 @@ Status
 Changes
 Console Output
 Edit Build Information
+Supprimer le build "#55"
 Log de scrutation
 Timings
 Git Build Data
 Pipeline Overview
-Thread Dump
-Pause/resume
 Replay
 Pipeline Steps
 Workspaces
 Previous Build
-En coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursEn coursSuccès
+En échecEn échec
 Sortie de la console
 Download
 Voir en texte brut
@@ -44,368 +43,41 @@ using GIT_ASKPASS to set credentials
 Seen branch in repository origin/main
 Seen 1 remote branch
  > git show-ref --tags -d # timeout=10
-Checking out Revision 5f44ee01e2574b910486041bcb1e0dc223eef181 (origin/main)
+Checking out Revision f33781100b758697bd9d479bc8857ae5bd007498 (origin/main)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f 5f44ee01e2574b910486041bcb1e0dc223eef181 # timeout=10
-Commit message: "push pour tester le sonar"
- > git rev-list --no-walk 82c7e91398543b00d3e32c8530051b85276efae2 # timeout=10
-[Pipeline] Start of Pipeline
-[Pipeline] node
-Running on Jenkins in /var/lib/jenkins/workspace/webhootest
-[Pipeline] {
-[Pipeline] stage
-[Pipeline] { (Declarative: Checkout SCM)
-[Pipeline] checkout
-The recommended git tool is: NONE
-using credential ahmeddhib
- > git rev-parse --resolve-git-dir /var/lib/jenkins/workspace/webhootest/.git # timeout=10
-Fetching changes from the remote Git repository
- > git config remote.origin.url https://github.com/Ahmeddhib/StudentsManagement-DevOps.git # timeout=10
-Fetching upstream changes from https://github.com/Ahmeddhib/StudentsManagement-DevOps.git
- > git --version # timeout=10
- > git --version # 'git version 2.25.1'
-using GIT_ASKPASS to set credentials 
- > git fetch --tags --force --progress -- https://github.com/Ahmeddhib/StudentsManagement-DevOps.git +refs/heads/*:refs/remotes/origin/* # timeout=10
-Seen branch in repository origin/main
-Seen 1 remote branch
- > git show-ref --tags -d # timeout=10
-Checking out Revision 5f44ee01e2574b910486041bcb1e0dc223eef181 (origin/main)
- > git config core.sparsecheckout # timeout=10
- > git checkout -f 5f44ee01e2574b910486041bcb1e0dc223eef181 # timeout=10
-Commit message: "push pour tester le sonar"
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] withEnv
-[Pipeline] {
-[Pipeline] withEnv
-[Pipeline] {
-[Pipeline] stage
-[Pipeline] { (Checkout)
-[Pipeline] checkout
-The recommended git tool is: NONE
-No credentials specified
- > git rev-parse --resolve-git-dir /var/lib/jenkins/workspace/webhootest/.git # timeout=10
-Fetching changes from the remote Git repository
- > git config remote.origin.url https://github.com/Ahmeddhib/StudentsManagement-DevOps.git # timeout=10
-Using shallow fetch with depth 1
-Fetching upstream changes from https://github.com/Ahmeddhib/StudentsManagement-DevOps.git
- > git --version # timeout=10
- > git --version # 'git version 2.25.1'
- > git fetch --tags --force --progress --depth=1 -- https://github.com/Ahmeddhib/StudentsManagement-DevOps.git +refs/heads/*:refs/remotes/origin/* # timeout=10
- > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
-Checking out Revision 5f44ee01e2574b910486041bcb1e0dc223eef181 (refs/remotes/origin/main)
- > git config core.sparsecheckout # timeout=10
- > git checkout -f 5f44ee01e2574b910486041bcb1e0dc223eef181 # timeout=10
-Commit message: "push pour tester le sonar"
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (SonarQube Analysis - With Token)
-[Pipeline] script
-[Pipeline] {
-[Pipeline] echo
-🔍 Analyse SonarQube en cours...
-[Pipeline] sh
-+ mvn sonar:sonar -Dsonar.projectKey=StudentsManagement -Dsonar.projectName=Students Management System -Dsonar.host.url=http://192.168.49.1:9000 -Dsonar.login=squ_89c7bc3d712cf67b71452a9253ceb6d571849d3e -Dsonar.sources=src/main/java -Dsonar.java.binaries=target/classes
-[[1;34mINFO[m] Scanning for projects...
-[[1;34mINFO[m] 
-[[1;34mINFO[m] [1m--------------------< [0;36mtn.esprit:student-management[0;1m >--------------------[m
-[[1;34mINFO[m] [1mBuilding student-management 0.0.1-SNAPSHOT[m
-[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
-[[1;34mINFO[m] 
-[[1;34mINFO[m] [1m--- [0;32msonar-maven-plugin:3.9.1.2184:sonar[m [1m(default-cli)[m @ [36mstudent-management[0;1m ---[m
-[[1;34mINFO[m] User cache: /var/lib/jenkins/.sonar/cache
-[[1;34mINFO[m] SonarQube version: 9.9.8.100196
-[[1;34mINFO[m] Default locale: "fr_FR", source code encoding: "UTF-8"
-[[1;34mINFO[m] Load global settings
-[[1;34mINFO[m] Load global settings (done) | time=436ms
-[[1;34mINFO[m] Server id: 147B411E-AZsafLYxIQxPB0XIGZ3h
-[[1;34mINFO[m] User cache: /var/lib/jenkins/.sonar/cache
-[[1;34mINFO[m] Load/download plugins
-[[1;34mINFO[m] Load plugins index
-[[1;34mINFO[m] Load plugins index (done) | time=371ms
-[[1;34mINFO[m] Load/download plugins (done) | time=833ms
-[[1;34mINFO[m] Process project properties
-[[1;34mINFO[m] Process project properties (done) | time=15ms
-[[1;34mINFO[m] Execute project builders
-[[1;34mINFO[m] Execute project builders (done) | time=2ms
-[[1;34mINFO[m] Project key: StudentsManagement
-[[1;34mINFO[m] Base dir: /var/lib/jenkins/workspace/webhootest
-[[1;34mINFO[m] Working dir: /var/lib/jenkins/workspace/webhootest/target/sonar
-[[1;34mINFO[m] Load project settings for component key: 'StudentsManagement'
-[[1;34mINFO[m] Load project settings for component key: 'StudentsManagement' (done) | time=196ms
-[[1;34mINFO[m] Auto-configuring with CI 'Jenkins'
-[[1;34mINFO[m] Load quality profiles
-[[1;34mINFO[m] Load quality profiles (done) | time=308ms
-[[1;34mINFO[m] Load active rules
-[[1;34mINFO[m] Load active rules (done) | time=6103ms
-[[1;34mINFO[m] Load analysis cache
-[[1;34mINFO[m] Load analysis cache (524 bytes) | time=34ms
-[[1;34mINFO[m] Load project repositories
-[[1;34mINFO[m] Load project repositories (done) | time=53ms
-[[1;34mINFO[m] Indexing files...
-[[1;34mINFO[m] Project configuration:
-[[1;34mINFO[m] 21 files indexed
-[[1;34mINFO[m] 0 files ignored because of scm ignore settings
-[[1;34mINFO[m] Quality profile for java: Sonar way
-[[1;34mINFO[m] ------------- Run sensors on module Students Management System
-[[1;34mINFO[m] Load metrics repository
-[[1;34mINFO[m] Load metrics repository (done) | time=108ms
-[[1;34mINFO[m] Sensor JavaSensor [java]
-[[1;34mINFO[m] Configured Java source version (sonar.java.source): 17
-[[1;34mINFO[m] JavaClasspath initialization
-[[1;34mINFO[m] JavaClasspath initialization (done) | time=7ms
-[[1;34mINFO[m] JavaTestClasspath initialization
-[[1;34mINFO[m] JavaTestClasspath initialization (done) | time=5ms
-[[1;34mINFO[m] Server-side caching is enabled. The Java analyzer will not try to leverage data from a previous analysis.
-[[1;34mINFO[m] Using ECJ batch to parse 19 Main java source files with batch size 89 KB.
-[[1;34mINFO[m] Starting batch processing.
-[[1;34mINFO[m] The Java analyzer cannot skip unchanged files in this context. A full analysis is performed for all files.
-[[1;34mINFO[m] 100% analyzed
-[[1;34mINFO[m] Batch processing: Done.
-[[1;34mINFO[m] Did not optimize analysis for any files, performed a full analysis for all 19 files.
-[[1;34mINFO[m] Using ECJ batch to parse 1 Test java source files with batch size 89 KB.
-[[1;34mINFO[m] Starting batch processing.
-[[1;34mINFO[m] 100% analyzed
-[[1;34mINFO[m] Batch processing: Done.
-[[1;34mINFO[m] Did not optimize analysis for any files, performed a full analysis for all 1 files.
-[[1;34mINFO[m] No "Generated" source files to scan.
-[[1;34mINFO[m] Sensor JavaSensor [java] (done) | time=3083ms
-[[1;34mINFO[m] Sensor JaCoCo XML Report Importer [jacoco]
-[[1;34mINFO[m] 'sonar.coverage.jacoco.xmlReportPaths' is not defined. Using default locations: target/site/jacoco/jacoco.xml,target/site/jacoco-it/jacoco.xml,build/reports/jacoco/test/jacocoTestReport.xml
-[[1;34mINFO[m] No report imported, no coverage information will be imported by JaCoCo XML Report Importer
-[[1;34mINFO[m] Sensor JaCoCo XML Report Importer [jacoco] (done) | time=4ms
-[[1;34mINFO[m] Sensor CSS Rules [javascript]
-[[1;34mINFO[m] No CSS, PHP, HTML or VueJS files are found in the project. CSS analysis is skipped.
-[[1;34mINFO[m] Sensor CSS Rules [javascript] (done) | time=1ms
-[[1;34mINFO[m] Sensor C# Project Type Information [csharp]
-[[1;34mINFO[m] Sensor C# Project Type Information [csharp] (done) | time=2ms
-[[1;34mINFO[m] Sensor C# Analysis Log [csharp]
-[[1;34mINFO[m] Sensor C# Analysis Log [csharp] (done) | time=61ms
-[[1;34mINFO[m] Sensor C# Properties [csharp]
-[[1;34mINFO[m] Sensor C# Properties [csharp] (done) | time=1ms
-[[1;34mINFO[m] Sensor SurefireSensor [java]
-[[1;34mINFO[m] parsing [/var/lib/jenkins/workspace/webhootest/target/surefire-reports]
-[[1;34mINFO[m] Sensor SurefireSensor [java] (done) | time=5ms
-[[1;34mINFO[m] Sensor HTML [web]
-[[1;34mINFO[m] Sensor HTML [web] (done) | time=4ms
-[[1;34mINFO[m] Sensor TextAndSecretsSensor [text]
-[[1;34mINFO[m] 20 source files to be analyzed
-[[1;34mINFO[m] 20/20 source files have been analyzed
-[[1;34mINFO[m] Sensor TextAndSecretsSensor [text] (done) | time=51ms
-[[1;34mINFO[m] Sensor VB.NET Project Type Information [vbnet]
-[[1;34mINFO[m] Sensor VB.NET Project Type Information [vbnet] (done) | time=1ms
-[[1;34mINFO[m] Sensor VB.NET Analysis Log [vbnet]
-[[1;34mINFO[m] Sensor VB.NET Analysis Log [vbnet] (done) | time=42ms
-[[1;34mINFO[m] Sensor VB.NET Properties [vbnet]
-[[1;34mINFO[m] Sensor VB.NET Properties [vbnet] (done) | time=1ms
-[[1;34mINFO[m] Sensor IaC Docker Sensor [iac]
-[[1;34mINFO[m] 0 source files to be analyzed
-[[1;34mINFO[m] 0/0 source files have been analyzed
-[[1;34mINFO[m] Sensor IaC Docker Sensor [iac] (done) | time=160ms
-[[1;34mINFO[m] ------------- Run sensors on project
-[[1;34mINFO[m] Sensor Analysis Warnings import [csharp]
-[[1;34mINFO[m] Sensor Analysis Warnings import [csharp] (done) | time=2ms
-[[1;34mINFO[m] Sensor Zero Coverage Sensor
-[[1;34mINFO[m] Sensor Zero Coverage Sensor (done) | time=19ms
-[[1;34mINFO[m] Sensor Java CPD Block Indexer
-[[1;34mINFO[m] Sensor Java CPD Block Indexer (done) | time=51ms
-[[1;34mINFO[m] SCM Publisher SCM provider for this project is: git
-[[1;34mINFO[m] SCM Publisher 20 source files to be analyzed
-[[1;33mWARNING[m] Shallow clone detected, no blame information will be provided. You can convert to non-shallow with 'git fetch --unshallow'.
-[[1;34mINFO[m] SCM Publisher 0/20 source files have been analyzed (done) | time=5ms
-[[1;33mWARNING[m] Missing blame information for the following files:
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/repositories/CourseRepository.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/StudentManagementApplication.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/controllers/DepartmentController.java
-[[1;33mWARNING[m]   * src/test/java/tn/esprit/studentmanagement/StudentManagementApplicationTests.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/entities/Course.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/services/IStudentService.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/entities/Enrollment.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/controllers/StudentController.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/services/DepartmentService.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/controllers/EnrollmentController.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/services/IEnrollment.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/services/IDepartmentService.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/entities/Status.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/services/StudentService.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/entities/Student.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/entities/Department.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/repositories/DepartmentRepository.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/repositories/EnrollmentRepository.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/repositories/StudentRepository.java
-[[1;33mWARNING[m]   * src/main/java/tn/esprit/studentmanagement/services/EnrollmentService.java
-[[1;33mWARNING[m] This may lead to missing/broken features in SonarQube
-[[1;34mINFO[m] CPD Executor 9 files had no CPD blocks
-[[1;34mINFO[m] CPD Executor Calculating CPD for 10 files
-[[1;34mINFO[m] CPD Executor CPD calculation finished (done) | time=17ms
-[[1;34mINFO[m] Analysis report generated in 87ms, dir size=155.0 kB
-[[1;34mINFO[m] Analysis report compressed in 103ms, zip size=48.9 kB
-[[1;34mINFO[m] Analysis report uploaded in 70ms
-[[1;34mINFO[m] ANALYSIS SUCCESSFUL, you can find the results at: http://192.168.49.1:9000/dashboard?id=StudentsManagement
-[[1;34mINFO[m] Note that you will be able to access the updated dashboard once the server has processed the submitted analysis report
-[[1;34mINFO[m] More about the report processing at http://192.168.49.1:9000/api/ce/task?id=AZsfDJbMa6ifxZc0OFX9
-[[1;34mINFO[m] Analysis total time: 16.415 s
-[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
-[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
-[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
-[[1;34mINFO[m] Total time:  22.462 s
-[[1;34mINFO[m] Finished at: 2025-12-14T23:47:57+01:00
-[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
-[Pipeline] echo
-✅ Analyse SonarQube terminée
-[Pipeline] }
-[Pipeline] // script
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Check for Code Changes)
-[Pipeline] script
-[Pipeline] {
-[Pipeline] sh
-+ find . -type f -name *.java -o -name *.xml -o -name *.properties+  -o -name *.yml -o -name *.yaml -o -name Dockerfile -o -name pom.xmlsort -o
- -name Jenkinsfile
-+ xargs cat
-+ sha256sum
-+ awk {print $1}
-+ cat current_code_hash.txt
-+ echo Hash calculé : 697e7e45825b8bae4a866dbfd3d60cbd6a0e9a9bbbebdec8269ac8620f569e56
-Hash calculé : 697e7e45825b8bae4a866dbfd3d60cbd6a0e9a9bbbebdec8269ac8620f569e56
-[Pipeline] readFile
-[Pipeline] readFile
-[Pipeline] echo
-Hash précédent trouvé : 697e7e45825b8bae4a866dbfd3d60cbd6a0e9a9bbbebdec8269ac8620f569e56
-[Pipeline] echo
-✅ Aucun changement dans le code
-[Pipeline] writeFile
-[Pipeline] echo
-Build nécessaire ? false
-[Pipeline] }
-[Pipeline] // script
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Build Maven Project)
-Stage "Build Maven Project" skipped due to when conditional
-[Pipeline] getContext
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Build Docker Image)
-Stage "Build Docker Image" skipped due to when conditional
-[Pipeline] getContext
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Push Docker Image)
-[Pipeline] script
-[Pipeline] {
-[Pipeline] withCredentials
-Masking supported pattern matches of $DOCKER_PASS
-[Pipeline] {
-[Pipeline] sh
-+ echo Authentification sur Docker Hub...
-Authentification sur Docker Hub...
-+ echo ****
-+ docker login -u ahmedwolf --password-stdin
+ > git checkout -f f33781100b758697bd9d479bc8857ae5bd007498 # timeout=10
+Commit message: "added some modification in jenkinsfile and also added some tests with jacoco et mockito and also added some dependency in pom.xml"
+ > git rev-list --no-walk 5f44ee01e2574b910486041bcb1e0dc223eef181 # timeout=10
+org.codehaus.groovy.control.MultipleCompilationErrorsException: startup failed:
+WorkflowScript: 78: unexpected char: '\' @ line 78, column 76.
+   rep -oP 'type="LINE" covered="\K[^"]+' $
+                                 ^
 
-WARNING! Your credentials are stored unencrypted in '/var/lib/jenkins/.docker/config.json'.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/go/credential-store/
+1 error
 
-Login Succeeded
-+ echo Images disponibles localement :
-Images disponibles localement :
-+ docker images
-+ grep ahmedwolf/spring-test3
-ahmedwolf/spring-test3        build-52        30149d6c0564   35 minutes ago   356MB
-ahmedwolf/spring-test3        latest          30149d6c0564   35 minutes ago   356MB
-ahmedwolf/spring-test3        build-39        df852c48e4c4   12 days ago      356MB
-ahmedwolf/spring-test3        build-43        df852c48e4c4   12 days ago      356MB
-+ docker inspect ahmedwolf/spring-test3:build-54
-+ echo ⚠️ Image ahmedwolf/spring-test3:build-54 non trouvée localement
-⚠️ Image ahmedwolf/spring-test3:build-54 non trouvée localement
-+ echo → Skip du push pour ce tag
-→ Skip du push pour ce tag
-+ [ false = true ]
-+ echo Skip push latest (aucun changement détecté)
-Skip push latest (aucun changement détecté)
-[Pipeline] }
-[Pipeline] // withCredentials
-[Pipeline] }
-[Pipeline] // script
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Deploy to Kubernetes)
-[Pipeline] script
-[Pipeline] {
-[Pipeline] sh
-+ echo 🔄 Déploiement sur Kubernetes...
-🔄 Déploiement sur Kubernetes...
-+ docker inspect ahmedwolf/spring-test3:build-54
-+ docker inspect ahmedwolf/spring-test3:latest
-+ echo Utilisation de l'image latest locale: ahmedwolf/spring-test3:latest
-Utilisation de l'image latest locale: ahmedwolf/spring-test3:latest
-+ IMAGE_TO_DEPLOY=ahmedwolf/spring-test3:latest
-+ echo Image à déployer: ahmedwolf/spring-test3:latest
-Image à déployer: ahmedwolf/spring-test3:latest
-+ kubectl get deployment spring-test3
-+ echo Mise à jour du déploiement existant...
-Mise à jour du déploiement existant...
-+ kubectl set image deployment/spring-test3 spring-test3=ahmedwolf/spring-test3:latest --record
-Flag --record has been deprecated, --record will be removed in the future
-+ kubectl rollout status deployment/spring-test3 --timeout=300s
-Waiting for deployment "spring-test3" rollout to finish: 0 of 1 updated replicas are available...
-deployment "spring-test3" successfully rolled out
-+ echo ✅ Déploiement Kubernetes terminé
-✅ Déploiement Kubernetes terminé
-+ echo --- Informations du déploiement ---
---- Informations du déploiement ---
-+ kubectl get deployment spring-test3 -o wide
-NAME           READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS     IMAGES                          SELECTOR
-spring-test3   1/1     1            1           22h   spring-test3   ahmedwolf/spring-test3:latest   app=spring-test3
-[Pipeline] }
-[Pipeline] // script
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Declarative: Post Actions)
-[Pipeline] echo
-🧹 Nettoyage...
-[Pipeline] sh
-+ docker logout
-Removing login credentials for https://index.docker.io/v1/
-[Pipeline] echo
-📊 Résumé du build:
-[Pipeline] echo
-Build #54
-[Pipeline] echo
-Image: ahmedwolf/spring-test3:build-54
-[Pipeline] echo
-Build nécessaire: false
-[Pipeline] archiveArtifacts
-Archiving artifacts
-Enregistrement des empreintes numériques
-[Pipeline] echo
-🔄 Statut du build changé depuis la dernière exécution
-[Pipeline] echo
-✅ Pipeline terminée avec succès !
-[Pipeline] echo
-📦 Image Docker: ahmedwolf/spring-test3:build-54
-[Pipeline] echo
-🚀 Déployé sur Kubernetes
-[Pipeline] echo
-🔍 Analyse SonarQube complétée
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] }
-[Pipeline] // withEnv
-[Pipeline] }
-[Pipeline] // withEnv
-[Pipeline] }
-[Pipeline] // node
-[Pipeline] End of Pipeline
-Finished: SUCCESS
+	at org.codehaus.groovy.control.ErrorCollector.failIfErrors(ErrorCollector.java:309)
+	at org.codehaus.groovy.control.ErrorCollector.addFatalError(ErrorCollector.java:149)
+	at org.codehaus.groovy.control.ErrorCollector.addError(ErrorCollector.java:119)
+	at org.codehaus.groovy.control.ErrorCollector.addError(ErrorCollector.java:131)
+	at org.codehaus.groovy.control.SourceUnit.addError(SourceUnit.java:349)
+	at org.codehaus.groovy.antlr.AntlrParserPlugin.transformCSTIntoAST(AntlrParserPlugin.java:220)
+	at org.codehaus.groovy.antlr.AntlrParserPlugin.parseCST(AntlrParserPlugin.java:191)
+	at org.codehaus.groovy.control.SourceUnit.parse(SourceUnit.java:233)
+	at org.codehaus.groovy.control.CompilationUnit$1.call(CompilationUnit.java:189)
+	at org.codehaus.groovy.control.CompilationUnit.applyToSourceUnits(CompilationUnit.java:966)
+	at org.codehaus.groovy.control.CompilationUnit.doPhaseOperation(CompilationUnit.java:626)
+	at org.codehaus.groovy.control.CompilationUnit.processPhaseOperations(CompilationUnit.java:602)
+	at org.codehaus.groovy.control.CompilationUnit.compile(CompilationUnit.java:579)
+	at groovy.lang.GroovyClassLoader.doParseClass(GroovyClassLoader.java:323)
+	at groovy.lang.GroovyClassLoader.parseClass(GroovyClassLoader.java:293)
+	at PluginClassLoader for script-security//org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.GroovySandbox$Scope.parse(GroovySandbox.java:162)
+	at PluginClassLoader for workflow-cps//org.jenkinsci.plugins.workflow.cps.CpsGroovyShell.doParse(CpsGroovyShell.java:202)
+	at PluginClassLoader for workflow-cps//org.jenkinsci.plugins.workflow.cps.CpsGroovyShell.reparse(CpsGroovyShell.java:186)
+	at PluginClassLoader for workflow-cps//org.jenkinsci.plugins.workflow.cps.CpsFlowExecution.parseScript(CpsFlowExecution.java:669)
+	at PluginClassLoader for workflow-cps//org.jenkinsci.plugins.workflow.cps.CpsFlowExecution.start(CpsFlowExecution.java:615)
+	at PluginClassLoader for workflow-job//org.jenkinsci.plugins.workflow.job.WorkflowRun.run(WorkflowRun.java:341)
+	at hudson.model.ResourceController.execute(ResourceController.java:101)
+	at hudson.model.Executor.run(Executor.java:460)
+Finished: FAILURE
 
 REST API
