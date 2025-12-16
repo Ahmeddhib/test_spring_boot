@@ -1,51 +1,4 @@
-Skip to content
-Jenkins
-
-    webhootest
-
-#68
-
-    Pipeline Overview
-
-Administrer Jenkins
-ahmed dhib
-En échecEn échec
-#68
-Démarrée il y a 1 mn 0 s.
-Queued 6,9 s
-Took 46 s
-Changes
-Artifacts
-Graph
-Stage Checkout SCM
-0,86s
-Stage Checkout
-1,2s
-Stage Run Tests & Generate JaCoCo
-41s
-Stage SonarQube Analysis
-78ms
-Stage Build Docker Image
-83ms
-Stage Push to Docker Hub
-35ms
-Stage Deploy to Kubernetes
-54ms
-
-    Stage Post Actions
-    0,62s
-
-Run Tests & Generate JaCoCo
-
-41s
-Démarrée il y a 1min.
-Jenkins
-🧪 Exécution des tests avec JaCoCo...
-9ms
-Shell Script
-41s
-
-+ echo === ÉTAPE 1: EXÉCUTION DES TESTS ===
+ echo === ÉTAPE 1: EXÉCUTION DES TESTS ===
 
 === ÉTAPE 1: EXÉCUTION DES TESTS ===
 
@@ -141,578 +94,33 @@ changed source code.
 INFO] Compiling 19 source files with javac [debug parameters release 17] to target/classes
 
 [
-INFO] 
+INFO] -------------------------------------------------------------
 
 [
-INFO] 
---- maven-resources-plugin:3.3.1:testResources 
-(default-testResources) @ 
-student-management ---
+ERROR] COMPILATION ERROR : 
 
 [
-INFO] Copying 1 resource from src/test/resources to target/test-classes
+INFO] -------------------------------------------------------------
 
 [
-INFO] 
+ERROR] /var/lib/jenkins/workspace/webhootest/src/main/java/tn/esprit/studentmanagement/controllers/StudentController.java:[38,8] cannot find symbol
+
+  symbol:   class ResponseEntity
+
+  location: class tn.esprit.studentmanagement.controllers.StudentController
 
 [
-INFO] 
---- maven-compiler-plugin:3.14.0:testCompile 
-(default-testCompile) @ 
-student-management ---
+ERROR] /var/lib/jenkins/workspace/webhootest/src/main/java/tn/esprit/studentmanagement/controllers/StudentController.java:[48,8] cannot find symbol
+
+  symbol:   class ResponseEntity
+
+  location: class tn.esprit.studentmanagement.controllers.StudentController
 
 [
-INFO] Recompiling the module because of 
-changed dependency.
+INFO] 2 errors 
 
 [
-INFO] Compiling 5 source files with javac [debug parameters release 17] to target/test-classes
-
-[
-WARNING] /var/lib/jenkins/workspace/webhootest/src/test/java/tn/esprit/studentmanagement/controllers/StudentControllerTest.java:[29,6] org.springframework.boot.test.mock.mockito.MockBean in org.springframework.boot.test.mock.mockito has been deprecated and marked for removal
-
-[
-WARNING] /var/lib/jenkins/workspace/webhootest/src/test/java/tn/esprit/studentmanagement/controllers/StudentControllerTest.java:[29,6] org.springframework.boot.test.mock.mockito.MockBean in org.springframework.boot.test.mock.mockito has been deprecated and marked for removal
-
-[
-WARNING] /var/lib/jenkins/workspace/webhootest/src/test/java/tn/esprit/studentmanagement/controllers/StudentControllerTest.java:[29,6] org.springframework.boot.test.mock.mockito.MockBean in org.springframework.boot.test.mock.mockito has been deprecated and marked for removal
-
-[
-WARNING] /var/lib/jenkins/workspace/webhootest/src/test/java/tn/esprit/studentmanagement/controllers/StudentControllerTest.java:[29,6] org.springframework.boot.test.mock.mockito.MockBean in org.springframework.boot.test.mock.mockito has been deprecated and marked for removal
-
-[
-WARNING] /var/lib/jenkins/workspace/webhootest/src/test/java/tn/esprit/studentmanagement/controllers/StudentControllerTest.java:[29,6] org.springframework.boot.test.mock.mockito.MockBean in org.springframework.boot.test.mock.mockito has been deprecated and marked for removal
-
-[
-INFO] 
-
-[
-INFO] 
---- maven-surefire-plugin:3.5.0:test 
-(default-test) @ 
-student-management ---
-
-[
-INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
-
-[
-INFO] 
-
-[
-INFO] -------------------------------------------------------
-
-[
-INFO]  T E S T S
-
-[
-INFO] -------------------------------------------------------
-
-[
-INFO] Running tn.esprit.studentmanagement.
-StudentManagementApplicationTests
-
-11:36:13.970 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [tn.esprit.studentmanagement.StudentManagementApplicationTests]: StudentManagementApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-
-11:36:14.282 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration tn.esprit.studentmanagement.StudentManagementApplication for test class tn.esprit.studentmanagement.StudentManagementApplicationTests
-
-  .   ____          _            __ _ _
-
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
-
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-
-  '  |____| .__|_| |_|_| |_\__, | / / / /
-
- =========|_|==============|___/=/_/_/_/
-
- :: Spring Boot ::                (v3.5.5)
-
-2025-12-16T11:36:15.653+01:00  INFO 15767 --- [student-management] [           main] t.e.s.StudentManagementApplicationTests  : Starting StudentManagementApplicationTests using Java 17.0.15 with PID 15767 (started by jenkins in /var/lib/jenkins/workspace/webhootest)
-
-2025-12-16T11:36:15.655+01:00  INFO 15767 --- [student-management] [           main] t.e.s.StudentManagementApplicationTests  : The following 1 profile is active: "test"
-
-2025-12-16T11:36:17.256+01:00  INFO 15767 --- [student-management] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-
-2025-12-16T11:36:17.437+01:00  INFO 15767 --- [student-management] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 150 ms. Found 4 JPA repository interfaces.
-
-2025-12-16T11:36:18.263+01:00  INFO 15767 --- [student-management] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-
-2025-12-16T11:36:18.372+01:00  INFO 15767 --- [student-management] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.26.Final
-
-2025-12-16T11:36:18.446+01:00  INFO 15767 --- [student-management] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-
-2025-12-16T11:36:19.103+01:00  INFO 15767 --- [student-management] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-
-2025-12-16T11:36:19.180+01:00  INFO 15767 --- [student-management] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-
-2025-12-16T11:36:20.002+01:00  INFO 15767 --- [student-management] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
-
-2025-12-16T11:36:20.005+01:00  INFO 15767 --- [student-management] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-
-2025-12-16T11:36:20.061+01:00  WARN 15767 --- [student-management] [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-
-2025-12-16T11:36:20.130+01:00  INFO 15767 --- [student-management] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
-
-	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
-
-	Database driver: undefined/unknown
-
-	Database version: 2.3.232
-
-	Autocommit mode: undefined/unknown
-
-	Isolation level: undefined/unknown
-
-	Minimum pool size: undefined/unknown
-
-	Maximum pool size: undefined/unknown
-
-2025-12-16T11:36:22.800+01:00  INFO 15767 --- [student-management] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-
-Hibernate: 
-
-    drop table if exists course cascade 
-
-Hibernate: 
-
-    drop table if exists department cascade 
-
-Hibernate: 
-
-    drop table if exists enrollment cascade 
-
-Hibernate: 
-
-    drop table if exists student cascade 
-
-Hibernate: 
-
-    create table course (
-
-        credit integer not null,
-
-        id_course bigint generated by default as identity,
-
-        code varchar(255),
-
-        description varchar(255),
-
-        name varchar(255),
-
-        primary key (id_course)
-
-    )
-
-Hibernate: 
-
-    create table department (
-
-        id_department bigint generated by default as identity,
-
-        head varchar(255),
-
-        location varchar(255),
-
-        name varchar(255),
-
-        phone varchar(255),
-
-        primary key (id_department)
-
-    )
-
-Hibernate: 
-
-    create table enrollment (
-
-        enrollment_date date,
-
-        grade float(53),
-
-        course_id_course bigint,
-
-        id_enrollment bigint generated by default as identity,
-
-        student_id_student bigint,
-
-        status enum ('ACTIVE','COMPLETED','DROPPED','FAILED','WITHDRAWN'),
-
-        primary key (id_enrollment)
-
-    )
-
-Hibernate: 
-
-    create table student (
-
-        date_of_birth date,
-
-        department_id_department bigint,
-
-        id_student bigint generated by default as identity,
-
-        address varchar(255),
-
-        email varchar(255),
-
-        first_name varchar(255),
-
-        last_name varchar(255),
-
-        phone varchar(255),
-
-        primary key (id_student)
-
-    )
-
-Hibernate: 
-
-    alter table if exists enrollment 
-
-       add constraint FKmuo68i8nton3ptf7hfkhhulni 
-
-       foreign key (course_id_course) 
-
-       references course
-
-Hibernate: 
-
-    alter table if exists enrollment 
-
-       add constraint FKe7ou10rkmxygeb5j05uc34ult 
-
-       foreign key (student_id_student) 
-
-       references student
-
-Hibernate: 
-
-    alter table if exists student 
-
-       add constraint FKki4lgeuqrn67tf5pdr13xyi7t 
-
-       foreign key (department_id_department) 
-
-       references department
-
-2025-12-16T11:36:22.957+01:00  INFO 15767 --- [student-management] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-
-2025-12-16T11:36:24.376+01:00  WARN 15767 --- [student-management] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-
-2025-12-16T11:36:24.507+01:00  INFO 15767 --- [student-management] [           main] o.s.v.b.OptionalValidatorFactoryBean     : Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
-
-2025-12-16T11:36:26.277+01:00  INFO 15767 --- [student-management] [           main] t.e.s.StudentManagementApplicationTests  : Started StudentManagementApplicationTests in 11.502 seconds (process running for 14.717)
-
-OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
-
-[
-INFO] 
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 14.01 s -- in tn.esprit.studentmanagement.
-StudentManagementApplicationTests
-
-[
-INFO] Running tn.esprit.studentmanagement.repositories.
-StudentRepositoryTest
-
-2025-12-16T11:36:27.521+01:00  INFO 15767 --- [student-management] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [tn.esprit.studentmanagement.repositories.StudentRepositoryTest]: StudentRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-
-2025-12-16T11:36:27.581+01:00  INFO 15767 --- [student-management] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration tn.esprit.studentmanagement.StudentManagementApplication for test class tn.esprit.studentmanagement.repositories.StudentRepositoryTest
-
-  .   ____          _            __ _ _
-
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
-
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-
-  '  |____| .__|_| |_|_| |_\__, | / / / /
-
- =========|_|==============|___/=/_/_/_/
-
- :: Spring Boot ::                (v3.5.5)
-
-2025-12-16T11:36:27.658+01:00  INFO 15767 --- [student-management] [           main] t.e.s.r.StudentRepositoryTest            : Starting StudentRepositoryTest using Java 17.0.15 with PID 15767 (started by jenkins in /var/lib/jenkins/workspace/webhootest)
-
-2025-12-16T11:36:27.659+01:00  INFO 15767 --- [student-management] [           main] t.e.s.r.StudentRepositoryTest            : No active profile set, falling back to 1 default profile: "default"
-
-2025-12-16T11:36:27.844+01:00  INFO 15767 --- [student-management] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-
-2025-12-16T11:36:27.868+01:00  INFO 15767 --- [student-management] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 21 ms. Found 4 JPA repository interfaces.
-
-2025-12-16T11:36:27.916+01:00  INFO 15767 --- [student-management] [           main] beddedDataSourceBeanFactoryPostProcessor : Replacing 'dataSource' DataSource bean with embedded version
-
-2025-12-16T11:36:27.967+01:00  INFO 15767 --- [student-management] [           main] o.s.j.d.e.EmbeddedDatabaseFactory        : Starting embedded database: url='jdbc:h2:mem:119db82b-4fa5-4c62-abb7-64a7866493cd;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false', username='sa'
-
-2025-12-16T11:36:28.014+01:00  INFO 15767 --- [student-management] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-
-2025-12-16T11:36:28.018+01:00  INFO 15767 --- [student-management] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-
-2025-12-16T11:36:28.044+01:00  INFO 15767 --- [student-management] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-
-2025-12-16T11:36:28.134+01:00  INFO 15767 --- [student-management] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
-
-	Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseFactory$EmbeddedDataSourceProxy@663458e5']
-
-	Database driver: undefined/unknown
-
-	Database version: 2.3.232
-
-	Autocommit mode: undefined/unknown
-
-	Isolation level: undefined/unknown
-
-	Minimum pool size: undefined/unknown
-
-	Maximum pool size: undefined/unknown
-
-2025-12-16T11:36:28.305+01:00  INFO 15767 --- [student-management] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-
-Hibernate: create table course (id_course bigint generated by default as identity, code varchar(255), credit integer not null, description varchar(255), name varchar(255), primary key (id_course))
-
-Hibernate: create table department (id_department bigint generated by default as identity, head varchar(255), location varchar(255), name varchar(255), phone varchar(255), primary key (id_department))
-
-Hibernate: create table enrollment (id_enrollment bigint generated by default as identity, enrollment_date date, grade float(53), status enum ('ACTIVE','COMPLETED','DROPPED','FAILED','WITHDRAWN'), course_id_course bigint, student_id_student bigint, primary key (id_enrollment))
-
-Hibernate: create table student (id_student bigint generated by default as identity, address varchar(255), date_of_birth date, email varchar(255), first_name varchar(255), last_name varchar(255), phone varchar(255), department_id_department bigint, primary key (id_student))
-
-Hibernate: alter table if exists enrollment add constraint FKmuo68i8nton3ptf7hfkhhulni foreign key (course_id_course) references course
-
-Hibernate: alter table if exists enrollment add constraint FKe7ou10rkmxygeb5j05uc34ult foreign key (student_id_student) references student
-
-Hibernate: alter table if exists student add constraint FKki4lgeuqrn67tf5pdr13xyi7t foreign key (department_id_department) references department
-
-2025-12-16T11:36:28.445+01:00  INFO 15767 --- [student-management] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-
-2025-12-16T11:36:28.652+01:00  INFO 15767 --- [student-management] [           main] t.e.s.r.StudentRepositoryTest            : Started StudentRepositoryTest in 1.058 seconds (process running for 17.091)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: select s1_0.id_student,s1_0.address,s1_0.date_of_birth,s1_0.department_id_department,s1_0.email,s1_0.first_name,s1_0.last_name,s1_0.phone from student s1_0 where upper(s1_0.first_name) like upper(?) escape '\'
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into department (head,location,name,phone,id_department) values (?,?,?,?,default)
-
-Hibernate: insert into department (head,location,name,phone,id_department) values (?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: select s1_0.id_student,s1_0.address,s1_0.date_of_birth,s1_0.department_id_department,s1_0.email,s1_0.first_name,s1_0.last_name,s1_0.phone from student s1_0 left join department d1_0 on d1_0.id_department=s1_0.department_id_department where d1_0.id_department=?
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: select s1_0.id_student,s1_0.address,s1_0.date_of_birth,s1_0.department_id_department,s1_0.email,s1_0.first_name,s1_0.last_name,s1_0.phone from student s1_0
-
-Hibernate: select s1_0.id_student,s1_0.address,s1_0.date_of_birth,s1_0.department_id_department,s1_0.email,s1_0.first_name,s1_0.last_name,s1_0.phone from student s1_0 where s1_0.email=?
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: delete from student where id_student=?
-
-Hibernate: select s1_0.id_student,s1_0.address,s1_0.date_of_birth,d1_0.id_department,d1_0.head,d1_0.location,d1_0.name,d1_0.phone,s1_0.email,s1_0.first_name,s1_0.last_name,s1_0.phone from student s1_0 left join department d1_0 on d1_0.id_department=s1_0.department_id_department where s1_0.id_student=?
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: insert into department (head,location,name,phone,id_department) values (?,?,?,?,default)
-
-Hibernate: insert into student (address,date_of_birth,department_id_department,email,first_name,last_name,phone,id_student) values (?,?,?,?,?,?,?,default)
-
-Hibernate: select s1_0.id_student,s1_0.address,s1_0.date_of_birth,s1_0.department_id_department,s1_0.email,s1_0.first_name,s1_0.last_name,s1_0.phone from student s1_0 where s1_0.email=?
-
-[
-INFO] 
-Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.130 s -- in tn.esprit.studentmanagement.repositories.
-StudentRepositoryTest
-
-[
-INFO] Running tn.esprit.studentmanagement.controllers.
-StudentControllerTest
-
-2025-12-16T11:36:29.667+01:00  INFO 15767 --- [student-management] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [tn.esprit.studentmanagement.controllers.StudentControllerTest]: StudentControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-
-2025-12-16T11:36:29.701+01:00  INFO 15767 --- [student-management] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration tn.esprit.studentmanagement.StudentManagementApplication for test class tn.esprit.studentmanagement.controllers.StudentControllerTest
-
-  .   ____          _            __ _ _
-
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
-
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-
-  '  |____| .__|_| |_|_| |_\__, | / / / /
-
- =========|_|==============|___/=/_/_/_/
-
- :: Spring Boot ::                (v3.5.5)
-
-2025-12-16T11:36:29.735+01:00  INFO 15767 --- [student-management] [           main] t.e.s.controllers.StudentControllerTest  : Starting StudentControllerTest using Java 17.0.15 with PID 15767 (started by jenkins in /var/lib/jenkins/workspace/webhootest)
-
-2025-12-16T11:36:29.736+01:00  INFO 15767 --- [student-management] [           main] t.e.s.controllers.StudentControllerTest  : No active profile set, falling back to 1 default profile: "default"
-
-2025-12-16T11:36:30.717+01:00  INFO 15767 --- [student-management] [           main] o.s.v.b.OptionalValidatorFactoryBean     : Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
-
-2025-12-16T11:36:31.378+01:00  INFO 15767 --- [student-management] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
-
-2025-12-16T11:36:31.381+01:00  INFO 15767 --- [student-management] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
-
-2025-12-16T11:36:31.394+01:00  INFO 15767 --- [student-management] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 6 ms
-
-2025-12-16T11:36:31.519+01:00  INFO 15767 --- [student-management] [           main] t.e.s.controllers.StudentControllerTest  : Started StudentControllerTest in 1.813 seconds (process running for 19.958)
-
-[
-ERROR] 
-Tests run: 7, Failures: 0, 
-Errors: 1, Skipped: 0, Time elapsed: 4.132 s
- &lt;&lt;&lt; FAILURE! -- in tn.esprit.studentmanagement.controllers.
-StudentControllerTest
-
-[
-ERROR] tn.esprit.studentmanagement.controllers.StudentControllerTest.testGetStudentByIdNotFound -- Time elapsed: 0.031 s <<< ERROR!
-
-jakarta.servlet.ServletException: Request processing failed: java.lang.RuntimeException: Student not found with id: 999
-
-	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1022)
-
-	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:903)
-
-	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:564)
-
-	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)
-
-	at org.springframework.test.web.servlet.TestDispatcherServlet.service(TestDispatcherServlet.java:72)
-
-	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658)
-
-	at org.springframework.mock.web.MockFilterChain$ServletFilterProxy.doFilter(MockFilterChain.java:165)
-
-	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
-
-	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100)
-
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-
-	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:162)
-
-	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
-
-	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93)
-
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-
-	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:162)
-
-	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
-
-	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
-
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
-
-	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:162)
-
-	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
-
-	at org.springframework.test.web.servlet.MockMvc.perform(MockMvc.java:201)
-
-	at tn.esprit.studentmanagement.controllers.StudentControllerTest.testGetStudentByIdNotFound(StudentControllerTest.java:104)
-
-	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
-
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
-
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
-
-Caused by: java.lang.RuntimeException: Student not found with id: 999
-
-	at tn.esprit.studentmanagement.controllers.StudentController.getStudent(StudentController.java:27)
-
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-
-	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-
-	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
-
-	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:258)
-
-	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:191)
-
-	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118)
-
-	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:991)
-
-	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:896)
-
-	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87)
-
-	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089)
-
-	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979)
-
-	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014)
-
-	... 24 more
-
-[
-INFO] Running tn.esprit.studentmanagement.services.
-StudentServiceTest
-
-[
-INFO] 
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.732 s -- in tn.esprit.studentmanagement.services.
-StudentServiceTest
-
-[
-INFO] Running tn.esprit.studentmanagement.entities.
-StudentTest
-
-[
-INFO] 
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.063 s -- in tn.esprit.studentmanagement.entities.
-StudentTest
-
-[
-INFO] 
-
-[
-INFO] Results:
-
-[
-INFO] 
-
-[
-ERROR] 
-Errors: 
-
-[
-ERROR] 
-  StudentControllerTest.testGetStudentByIdNotFound:104 » Servlet Request processing failed: java.lang.RuntimeException: Student not found with id: 999
-
-[
-INFO] 
-
-[
-ERROR] 
-Tests run: 39, Failures: 0, Errors: 1, Skipped: 0
-
-[
-INFO] 
+INFO] -------------------------------------------------------------
 
 [
 INFO] 
@@ -727,10 +135,10 @@ INFO]
 ------------------------------------------------------------------------
 
 [
-INFO] Total time:  33.135 s
+INFO] Total time:  4.748 s
 
 [
-INFO] Finished at: 2025-12-16T11:36:35+01:00
+INFO] Finished at: 2025-12-16T11:47:56+01:00
 
 [
 INFO] 
@@ -738,20 +146,28 @@ INFO]
 
 [
 ERROR] Failed to execute goal 
-org.apache.maven.plugins:maven-surefire-plugin:3.5.0:test 
-(default-test) on project 
+org.apache.maven.plugins:maven-compiler-plugin:3.14.0:compile 
+(default-compile) on project 
 student-management: 
+Compilation failure: Compilation failure: 
 
 [
-ERROR] 
+ERROR] /var/lib/jenkins/workspace/webhootest/src/main/java/tn/esprit/studentmanagement/controllers/StudentController.java:[38,8] cannot find symbol
 
 [
-ERROR] 
-Please refer to /var/lib/jenkins/workspace/webhootest/target/surefire-reports for the individual test results.
+ERROR]   symbol:   class ResponseEntity
 
 [
-ERROR] 
-Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+ERROR]   location: class tn.esprit.studentmanagement.controllers.StudentController
+
+[
+ERROR] /var/lib/jenkins/workspace/webhootest/src/main/java/tn/esprit/studentmanagement/controllers/StudentController.java:[48,8] cannot find symbol
+
+[
+ERROR]   symbol:   class ResponseEntity
+
+[
+ERROR]   location: class tn.esprit.studentmanagement.controllers.StudentController
 
 [
 ERROR] -> 
@@ -779,4 +195,3 @@ ERROR]
 [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
 script returned exit code 1
-
