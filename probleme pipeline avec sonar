@@ -237,3 +237,33 @@ curl -v -X POST http://localhost:8080/api/departments/createDepartment \
   -H "Content-Type: application/json" \
   -d '{"name":"Physique","head":"Dr. Einstein","location":"Bâtiment C"}' \
   -o response.json
+
+
+
+
+
+
+
+
+
+
+
+
+1. GET - Récupérer tous les départements
+bash
+# Avec authentification Basic (username:root, password:root123)
+curl -u "root:root123" http://localhost:8080/departments/getAllDepartment
+
+# Version verbose pour voir les détails
+curl -v -u "root:root123" http://localhost:8080/departments/getAllDepartment
+2. POST - Créer un nouveau département
+bash
+curl -X POST http://localhost:8080/departments/createDepartment \
+  -u "root:root123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Informatique",
+    "head": "Dr. Ahmed Dhib",
+    "location": "Bâtiment A, étage 3",
+    "phone": "+216 12 345 678"
+  }'
