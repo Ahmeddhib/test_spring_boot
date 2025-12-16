@@ -195,3 +195,45 @@ ERROR]
 [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
 script returned exit code 1
+
+
+
+
+# Version simple
+curl -X GET http://localhost:8080/api/departments/getAllDepartment
+
+# Version avec en-têtes et formatage JSON
+curl -X GET http://localhost:8080/api/departments/getAllDepartment \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  | jq .  # Optionnel : nécessite 'jq' installé pour formater la sortie JSON
+
+# Version avec sortie verbose (pour débogage)
+curl -v -X GET http://localhost:8080/api/departments/getAllDepartment \
+  -H "Accept: application/json"
+
+
+# Version simple avec JSON inline
+curl -X POST http://localhost:8080/api/departments/createDepartment \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Informatique","head":"Dr. Smith","location":"Bâtiment A","phone":"1234567890"}'
+
+# Version avec fichier JSON externe
+# Créez d'abord un fichier department.json :
+echo '{
+  "name": "Mathématiques",
+  "head": "Prof. Johnson",
+  "location": "Bâtiment B",
+  "phone": "0987654321"
+}' > department.json
+
+# Puis exécutez :
+curl -X POST http://localhost:8080/api/departments/createDepartment \
+  -H "Content-Type: application/json" \
+  -d @department.json
+
+# Version avec sortie verbose et sauvegarde de la réponse
+curl -v -X POST http://localhost:8080/api/departments/createDepartment \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Physique","head":"Dr. Einstein","location":"Bâtiment C"}' \
+  -o response.json
